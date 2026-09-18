@@ -31,7 +31,7 @@ use gateway_admin::{
         },
         client_keys::{
             ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
-            NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+            NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
         },
         observability::{
             DashboardObservation, DecimalAmount, DiagnosticDimension, DiagnosticObservation,
@@ -784,6 +784,14 @@ impl ClientKeyStore for MemoryClientKeyStore {
         _: &MutationContext,
     ) -> AdminStoreResult<(Revision, ClientKeyRecord)> {
         Err(unavailable("client key enabled"))
+    }
+
+    async fn reset_client_key_budget(
+        &self,
+        _: ResetClientKeyBudget,
+        _: &MutationContext,
+    ) -> AdminStoreResult<Revision> {
+        Err(unavailable("client key budget reset"))
     }
 
     async fn delete_client_key(
