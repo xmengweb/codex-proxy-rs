@@ -90,6 +90,7 @@ pub(super) async fn fixture() -> AdminTestFixture {
 fn usage_record() -> UsageListRecord {
     UsageListRecord {
         id: "req-visible".to_owned(),
+        client_api_key_name: Some("Development".to_owned()),
         endpoint: "/v1/responses".to_owned(),
         client_transport: "http_sse".to_owned(),
         requested_model_id: Some("coding".to_owned()),
