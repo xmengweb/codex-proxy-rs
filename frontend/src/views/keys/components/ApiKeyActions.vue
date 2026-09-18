@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { getApiKeys } from '@/api'
-import { Pencil, Power, Terminal, Trash2, Upload } from '@lucide/vue'
+import { Pencil, Power, RotateCcw, Terminal, Trash2, Upload } from '@lucide/vue'
 
 import BaseIconButton from '@/components/base/BaseIconButton.vue'
 
@@ -9,6 +9,7 @@ type ApiKeyRow = Awaited<ReturnType<typeof getApiKeys>>['items'][number]
 defineProps<{
   apiKey: ApiKeyRow
   deleting: boolean
+  resettingBudget: boolean
   updatingStatus: boolean
   revealing: boolean
 }>()
@@ -16,6 +17,7 @@ defineProps<{
 const emit = defineEmits<{
   use: [apiKey: ApiKeyRow]
   importCcs: [apiKey: ApiKeyRow]
+  resetBudget: [apiKey: ApiKeyRow]
   toggle: [apiKey: ApiKeyRow]
   delete: [apiKey: ApiKeyRow]
   edit: [apiKey: ApiKeyRow]
@@ -32,6 +34,17 @@ const emit = defineEmits<{
     >
       <Pencil class="size-3.5 text-cp-link" />
     </BaseIconButton>
+    <BaseIconButton
+      variant="ghost"
+      size="sm"
+      label="重置额度"
+      :loading="resettingBudget"
+      :disabled="resettingBudget"
+      @click.stop="emit('resetBudget', apiKey)"
+    >
+      <RotateCcw class="size-3.5 text-cp-warning" />
+    </BaseIconButton>
+
     <BaseIconButton
       variant="ghost"
       size="sm"
