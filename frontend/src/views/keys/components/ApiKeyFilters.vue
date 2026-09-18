@@ -6,6 +6,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 
 defineProps<{
   batchDeleting: boolean
+  readOnly: boolean
   selectedCount: number
 }>()
 
@@ -33,7 +34,7 @@ const search = defineModel<string>('search', { required: true })
 
     <div class="flex shrink-0 items-center justify-end gap-2 md:ml-auto">
       <BaseButton
-        v-if="selectedCount > 0"
+        v-if="!readOnly && selectedCount > 0"
         variant="destructive"
         :disabled="batchDeleting"
         @click="emit('deleteSelected')"
@@ -43,7 +44,7 @@ const search = defineModel<string>('search', { required: true })
         </template>
         删除选中 ({{ selectedCount }})
       </BaseButton>
-      <BaseButton variant="primary" @click="emit('create')">
+      <BaseButton v-if="!readOnly" variant="primary" @click="emit('create')">
         <template #icon>
           <Plus class="size-4" />
         </template>
