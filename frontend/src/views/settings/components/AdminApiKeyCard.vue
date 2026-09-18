@@ -45,7 +45,7 @@ const emit = defineEmits<{
         </BaseButton>
         <BaseButton
           variant="destructive"
-          :disabled="loading || regenerating || !status.exists"
+          :disabled="loading || regenerating || readOnly || !status.exists"
           @click="emit('requestDelete')"
         >
           <template #icon>
