@@ -8,8 +8,8 @@ export * from './modules/accounts'
 export * from './modules/api-keys'
 
 // 认证相关
-export * from './modules/auth'
 export * from './modules/admin-users'
+export * from './modules/auth'
 
 // 备份管理
 export * from './modules/backups'
