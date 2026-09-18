@@ -8,6 +8,7 @@ type ApiKeyRow = Awaited<ReturnType<typeof getApiKeys>>['items'][number]
 
 defineProps<{
   apiKey: ApiKeyRow
+  readOnly: boolean
   deleting: boolean
   resettingBudget: boolean
   updatingStatus: boolean
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 <template>
   <div class="flex items-center justify-start gap-0.5">
     <BaseIconButton
+      v-if="!readOnly"
       variant="ghost"
       size="sm"
       label="编辑密钥"
@@ -35,6 +37,7 @@ const emit = defineEmits<{
       <Pencil class="size-3.5 text-cp-link" />
     </BaseIconButton>
     <BaseIconButton
+      v-if="!readOnly"
       variant="ghost"
       size="sm"
       label="重置额度"
@@ -67,6 +70,7 @@ const emit = defineEmits<{
     </BaseIconButton>
 
     <BaseIconButton
+      v-if="!readOnly"
       variant="ghost"
       size="sm"
       :label="apiKey.enabled ? '禁用密钥' : '启用密钥'"
@@ -80,6 +84,7 @@ const emit = defineEmits<{
     </BaseIconButton>
 
     <BaseIconButton
+      v-if="!readOnly"
       variant="ghost"
       size="sm"
       label="删除密钥"
