@@ -10,8 +10,8 @@ use gateway_admin::{
         client_keys::{
             ClientKeyCursor, ClientKeyCursorValue, ClientKeyListQuery, ClientKeyPage,
             ClientKeyPageSize, ClientKeyRecord, ClientKeySecret, ClientKeySort, ClientKeySortField,
-            CreateClientKey, DeleteClientKey, NewClientKey, SetClientKeyEnabled, SortDirection,
-            UpdateClientKey,
+            CreateClientKey, DeleteClientKey, NewClientKey, ResetClientKeyBudget,
+            SetClientKeyEnabled, SortDirection, UpdateClientKey,
         },
     },
     ports::store::{AdminStoreError, AdminStoreErrorKind, AdminStoreResult, ClientKeyStore},
@@ -100,6 +100,14 @@ impl ClientKeyStore for TestClientKeyStore {
         _: SetClientKeyEnabled,
         _: &MutationContext,
     ) -> AdminStoreResult<(Revision, ClientKeyRecord)> {
+        Err(unused())
+    }
+
+    async fn reset_client_key_budget(
+        &self,
+        _: ResetClientKeyBudget,
+        _: &MutationContext,
+    ) -> AdminStoreResult<Revision> {
         Err(unused())
     }
 
