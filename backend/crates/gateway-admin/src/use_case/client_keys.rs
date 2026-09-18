@@ -15,7 +15,7 @@ use crate::{
         client_keys::{
             ClientKeyCursorValue, ClientKeyListQuery, ClientKeyMutation, ClientKeyPage,
             ClientKeySecret, ClientKeySortField, CreateClientKey, CreatedClientKey,
-            DeleteClientKey, NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+            DeleteClientKey, NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
         },
     },
     ports::store::{AdminStoreError, AdminStoreErrorKind, ClientKeyStore},
@@ -42,6 +42,12 @@ pub trait ClientKeyService: Send + Sync {
         &self,
         context: &MutationContext,
         command: SetClientKeyEnabled,
+    ) -> Result<ClientKeyMutation, AdminError>;
+
+    async fn reset_budget(
+        &self,
+        context: &MutationContext,
+        command: ResetClientKeyBudget,
     ) -> Result<ClientKeyMutation, AdminError>;
     async fn delete(
         &self,
@@ -151,6 +157,25 @@ impl ClientKeyService for DefaultClientKeyService {
         Ok(ClientKeyMutation {
             config_revision,
             record: Some(record),
+            id,
+        })
+    }
+
+    async fn reset_budget(
+        &self,
+        context: &MutationContext,
+        command: ResetClientKeyBudget,
+    ) -> Result<ClientKeyMutation, AdminError> {
+        let id = command.id.clone();
+        let config_revision = self
+            .store
+            .reset_client_key_budget(command, context)
+            .await
+            .map_err(|error| map_store_error(error, "client API key"))?;
+        publish_committed(self.snapshot.as_ref(), config_revision).await?;
+        Ok(ClientKeyMutation {
+            config_revision,
+            record: None,
             id,
         })
     }
