@@ -163,6 +163,12 @@ pub trait ControlPlaneRepository: Send + Sync {
         audit: AdminAuditEvent,
     ) -> StoreResult<Revision>;
 
+    async fn reset_client_api_key_budget(
+        &self,
+        id: &str,
+        audit: AdminAuditEvent,
+    ) -> StoreResult<Revision>;
+
     async fn delete_client_api_key(
         &self,
         id: &str,
@@ -269,6 +275,18 @@ impl ControlPlaneRepository for PgControlPlaneRepository {
         .await
     }
 
+    async fn reset_client_api_key_budget(
+        &self,
+        id: &str,
+        audit: AdminAuditEvent,
+    ) -> StoreResult<Revision> {
+        self.apply_targeted_mutation(
+            ControlPlaneMutation::ResetClientApiKeyBudget(id.to_owned()),
+            audit,
+        )
+        .await
+    }
+
     async fn delete_client_api_key(
         &self,
         id: &str,
@@ -286,6 +304,7 @@ enum ControlPlaneMutation {
     CreateClientApiKey(NewClientApiKey),
     UpdateClientApiKey(UpdateClientApiKeyDetails),
     SetClientApiKeyEnabled { id: String, enabled: bool },
+    ResetClientApiKeyBudget(String),
     DeleteClientApiKey(String),
     SetAdminApiKey(Option<String>),
 }
@@ -337,6 +356,10 @@ impl PgControlPlaneRepository {
                 }
                 ControlPlaneMutation::SetClientApiKeyEnabled { id, enabled } => {
                     set_client_api_key_enabled_in_transaction(&mut transaction, &id, enabled)
+                        .await?;
+                }
+                ControlPlaneMutation::ResetClientApiKeyBudget(id) => {
+                    client_budgets::reset_client_key_budget_in_transaction(&mut transaction, &id)
                         .await?;
                 }
                 ControlPlaneMutation::DeleteClientApiKey(id) => {
