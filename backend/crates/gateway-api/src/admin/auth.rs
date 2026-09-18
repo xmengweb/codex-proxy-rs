@@ -17,7 +17,7 @@ use tower_http::request_id::RequestId;
 use crate::{auth::SessionState, session_cookie};
 
 use super::{
-    AdminAuth, AdminEnvelope, AdminError, AdminJson, AdminResponse, wire::map_admin_service_error,
+    AdminEnvelope, AdminError, AdminJson, AdminResponse, wire::map_admin_service_error,
 };
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
