@@ -50,14 +50,20 @@ export interface KeyUsageRecord {
   createdAt: string
   model: string | null
   route: string | null
+  provider: string | null
+  authenticationKind: string | null
+  serviceTier: string | null
   reasoningEffort: string | null
+  reasoningPreset: string | null
+  subagentKind: string | null
+  compact: boolean | null
   clientTransport: string | null
   upstreamTransport: string | null
   tokenDetails: UsageTokenDetails | null
   billing: UsageBilling | null
   latencyMs: number | null
   firstTokenLatencyMs: number | null
-  latencyDetails: Pick<UsageLatencyDetails, 'firstEventMs' | 'firstReasoningMs' | 'firstTextMs'>
+  latencyDetails: Pick<UsageLatencyDetails, 'transportDecisionWaitMs' | 'wsConnectMs' | 'upstreamHeadersMs' | 'openaiProcessingMs' | 'firstEventMs' | 'firstReasoningMs' | 'firstTextMs'>
   clientIp: string | null
   userAgent: string | null
   status: KeyUsageRecordKind
