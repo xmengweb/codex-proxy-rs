@@ -8,6 +8,7 @@ import type { UsageListRecord } from '@/api/modules/usage'
 interface PreviewUsageRecordOptions {
   id: string
   accountEmail: string
+  clientApiKeyName?: string
   provider: 'openai' | 'xai'
   authenticationKind: 'oauth' | 'api_key'
   model: string
@@ -115,6 +116,7 @@ function previewUsageRecord(options: PreviewUsageRecordOptions): UsageListRecord
     authenticationKind: options.authenticationKind,
     accountId: `account_${options.id}`,
     accountEmail: options.accountEmail,
+    clientApiKeyName: options.clientApiKeyName ?? null,
     accountName: options.accountEmail.split('@')[0] ?? null,
     route: stream ? '/v1/responses' : '/v1/chat/completions',
     model: options.model,
