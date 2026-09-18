@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -10,6 +11,7 @@ import BaseTable from '@/components/base/BaseTable/index.vue'
 import LastUsedAtCell from '@/components/LastUsedAtCell.vue'
 import { useAccountGroupCatalog } from '@/composables/useAccountGroupCatalog'
 import { usePageSelection } from '@/composables/usePageSelection'
+import { useAuthStore } from '@/stores/modules/auth'
 import ApiKeyActions from './components/ApiKeyActions.vue'
 import ApiKeyBudgetCell from './components/ApiKeyBudgetCell.vue'
 import ApiKeyCreateModal from './components/ApiKeyCreateModal.vue'
@@ -25,6 +27,7 @@ import { useApiKeyUse } from './composables/useApiKeyUse'
 import { apiKeyColumns } from './constants'
 
 const selectedIds = ref<Set<string>>(new Set())
+const { isReadOnlyAdmin } = storeToRefs(useAuthStore())
 const {
   loading,
   apiKeys,
@@ -116,6 +119,7 @@ watch(
         <ApiKeyFilters
           v-model:search="searchQuery"
           :batch-deleting="batchDeleting"
+          :read-only="isReadOnlyAdmin"
           :selected-count="selectedIds.size"
           @create="openCreate"
           @delete-selected="showDeleteModal = true"
@@ -190,6 +194,7 @@ watch(
             <template #actions="{ row }">
               <ApiKeyActions
                 :api-key="row"
+                :read-only="isReadOnlyAdmin"
                 :deleting="deletingKey"
                 :resetting-budget="resettingBudget"
                 :revealing="revealingKeyIds.has(row.id)"
