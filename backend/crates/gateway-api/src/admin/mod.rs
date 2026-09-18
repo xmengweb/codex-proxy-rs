@@ -36,6 +36,7 @@ where
     S: SessionState + Clone + Send + Sync + 'static,
 {
     Router::new()
+        .merge(auth::router::<S>())
         .merge(account_groups::router::<S>())
         .merge(proxies::router::<S>())
         .merge(accounts::router::<S>())
