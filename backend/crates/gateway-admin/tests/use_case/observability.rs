@@ -852,6 +852,7 @@ fn total_record(
 ) -> UsageListRecord {
     UsageListRecord {
         id: id.to_owned(),
+        client_api_key_name: None,
         endpoint: "/v1/responses".to_owned(),
         client_transport: "http_sse".to_owned(),
         requested_model_id: Some("gpt-5.5".to_owned()),
