@@ -11,6 +11,64 @@ pub fn admin_session_actor_ref(admin_user_id: &str) -> String {
     format!("admin:{admin_user_id}")
 }
 
+/// 管理员账户的权限角色。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdminRole {
+    Admin,
+    ReadOnly,
+}
+
+impl AdminRole {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Admin => "admin",
+            Self::ReadOnly => "readonly",
+        }
+    }
+
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "admin" => Some(Self::Admin),
+            "readonly" => Some(Self::ReadOnly),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn is_read_only(self) -> bool {
+        matches!(self, Self::ReadOnly)
+    }
+}
+
+/// 管理员账户的公开安全信息。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdminUser {
+    pub username: String,
+    pub role: AdminRole,
+    pub created_at: DateTime<Utc>,
+}
+
+/// 创建管理员账户所需的凭据。
+#[derive(Clone, PartialEq, Eq)]
+pub struct CreateAdminUser {
+    pub username: String,
+    pub password: String,
+    pub role: AdminRole,
+}
+
+impl std::fmt::Debug for CreateAdminUser {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CreateAdminUser")
+            .field("username", &self.username)
+            .field("password", &"[REDACTED]")
+            .field("role", &self.role)
+            .finish()
+    }
+}
+
 /// 已认证的管理主体。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdminPrincipal {

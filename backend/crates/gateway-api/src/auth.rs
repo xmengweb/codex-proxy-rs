@@ -12,7 +12,7 @@ use axum::{
 };
 use gateway_admin::{
     AdminServices,
-    model::auth::{AuthSession, LoginCommand, LoginError, SessionSubject},
+    model::auth::{AdminRole, AuthSession, LoginCommand, LoginError, SessionSubject},
 };
 use serde::{Deserialize, Serialize};
 
@@ -71,11 +71,11 @@ struct SessionData {
     expires_at: String,
 }
 
-impl From<&AuthSession> for SessionData {
-    fn from(session: &AuthSession) -> Self {
+impl SessionData {
+    fn from_session(session: &AuthSession, admin_role: Option<AdminRole>) -> Self {
         Self {
-            role: match session.subject {
-                SessionSubject::Admin { .. } => "admin",
+            role: match &session.subject {
+                SessionSubject::Admin { .. } => admin_role.unwrap_or(AdminRole::Admin).as_str(),
                 SessionSubject::Key { .. } => "key",
             },
             expires_at: session.expires_at.to_rfc3339(),
@@ -127,6 +127,17 @@ where
         )
         .await
         .map_err(map_login_error)?;
+    let admin_role = match &result.session.subject {
+        SessionSubject::Admin { admin_user_id } => Some(
+            state
+                .admin_services()
+                .auth()
+                .admin_role(admin_user_id)
+                .await
+                .map_err(map_admin_service_error)?,
+        ),
+        SessionSubject::Key { .. } => None,
+    };
     let max_age = result
         .session
         .expires_at
@@ -145,7 +156,7 @@ where
     );
     let mut response = AdminResponse::new(
         StatusCode::OK,
-        AdminEnvelope::ok(SessionData::from(&result.session)),
+        AdminEnvelope::ok(SessionData::from_session(&result.session, admin_role)),
     )
     .into_response();
     response.headers_mut().insert(
@@ -168,11 +179,28 @@ where
         .session(session_cookie::value(&headers).as_deref())
         .await
         .map_err(map_admin_service_error)?;
+    let session_data = match session.as_ref() {
+        Some(session) => {
+            let admin_role = match &session.subject {
+                SessionSubject::Admin { admin_user_id } => Some(
+                    state
+                        .admin_services()
+                        .auth()
+                        .admin_role(admin_user_id)
+                        .await
+                        .map_err(map_admin_service_error)?,
+                ),
+                SessionSubject::Key { .. } => None,
+            };
+            Some(SessionData::from_session(session, admin_role))
+        }
+        None => None,
+    };
     Ok(AdminResponse::new(
         StatusCode::OK,
         AdminEnvelope::ok(SessionStatusData {
-            authenticated: session.is_some(),
-            session: session.as_ref().map(SessionData::from),
+            authenticated: session_data.is_some(),
+            session: session_data,
         }),
     ))
 }

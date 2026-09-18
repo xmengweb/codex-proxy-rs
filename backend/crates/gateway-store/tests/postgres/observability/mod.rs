@@ -671,7 +671,7 @@ async fn dashboard_account_metrics_should_partition_account_statuses() {
         .expect("dashboard range");
 
     let metrics = repository
-        .dashboard_summary(range, now)
+        .dashboard_summary(range, now, UsageRecordFilter::default())
         .await
         .expect("dashboard summary")
         .provider_accounts;
@@ -760,7 +760,7 @@ async fn dashboard_account_metrics_with_cooldowns_should_only_reclassify_eligibl
         .expect("dashboard range");
 
     let metrics = repository
-        .dashboard_summary(range, now)
+        .dashboard_summary(range, now, UsageRecordFilter::default())
         .await
         .expect("dashboard summary")
         .provider_accounts;
@@ -950,7 +950,7 @@ async fn admin_observability_adapter_preserves_utc_queries_metrics_costs_and_det
     let store = admin_observability_store(&database.pool);
 
     let dashboard = store
-        .dashboard_summary(range, now)
+        .dashboard_summary(range, now, UsageRecordFilter::default())
         .await
         .expect("admin dashboard summary");
     assert_eq!(dashboard.range, range);
@@ -1005,7 +1005,7 @@ async fn admin_observability_adapter_preserves_utc_queries_metrics_costs_and_det
     );
 
     let dashboard_trend = store
-        .dashboard_trend(range)
+        .dashboard_trend(range, UsageRecordFilter::default())
         .await
         .expect("admin dashboard trend");
     assert_eq!(
@@ -1293,7 +1293,7 @@ async fn dashboard_summary_totals_include_history_outside_selected_range() {
     let repository = observability_repository(&database.pool);
 
     let dashboard = repository
-        .dashboard_summary(range, now)
+        .dashboard_summary(range, now, UsageRecordFilter::default())
         .await
         .expect("dashboard summary");
     assert_eq!(
@@ -1351,7 +1351,7 @@ async fn observability_queries_preserve_request_account_cost_and_diagnostic_fact
     let repository = observability_repository(&database.pool);
 
     let dashboard = repository
-        .dashboard_summary(range, now)
+        .dashboard_summary(range, now, UsageRecordFilter::default())
         .await
         .expect("dashboard summary");
     assert_eq!(

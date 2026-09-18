@@ -10,13 +10,16 @@ interface AdminApiKeyStatus {
   exists: boolean
 }
 
-defineProps<{
+withDefaults(defineProps<{
   status: AdminApiKeyStatus
   loading: boolean
   regenerating: boolean
   deleting: boolean
   generatedKey: string
-}>()
+  readOnly?: boolean
+}>(), {
+  readOnly: false,
+})
 
 const emit = defineEmits<{
   regenerate: []
@@ -32,7 +35,7 @@ const emit = defineEmits<{
         <BaseButton
           variant="secondary"
           :loading="regenerating"
-          :disabled="loading || deleting"
+          :disabled="loading || deleting || readOnly"
           @click="emit('regenerate')"
         >
           <template #icon>
@@ -42,7 +45,7 @@ const emit = defineEmits<{
         </BaseButton>
         <BaseButton
           variant="destructive"
-          :disabled="loading || regenerating || !status.exists"
+          :disabled="loading || regenerating || readOnly || !status.exists"
           @click="emit('requestDelete')"
         >
           <template #icon>

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { KeyUsageRecord, KeyUsageRecordKind } from '@/api/modules/key-usage'
 import type { BaseTablePagination as Pagination } from '@/components/base/BaseTable/pagination'
+import { Minimize2 } from '@lucide/vue'
 import { computed } from 'vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseTablePagination from '@/components/base/BaseTable/BaseTablePagination.vue'
 import { defineTableColumns } from '@/components/base/BaseTable/columns'
 import BaseTable from '@/components/base/BaseTable/index.vue'
+import ProviderIconGroup from '@/components/ProviderIconGroup.vue'
 import UsageBillingCell from '@/views/usage/components/UsageBillingCell.vue'
 import UsageClientIpCell from '@/views/usage/components/UsageClientIpCell.vue'
 import UsageLatencyCell from '@/views/usage/components/UsageLatencyCell.vue'
@@ -18,9 +20,13 @@ defineProps<{ rows: KeyUsageRecord[], pagination: Pagination, loading: boolean, 
 defineEmits<{ pageChange: [page: number], pageSizeChange: [size: number] }>()
 const kind = defineModel<KeyUsageRecordKind>('kind', { required: true })
 const columns = computed(() => defineTableColumns<KeyUsageRecord>([
+  { key: 'provider', label: '平台', kind: 'custom', size: 'lg' },
   { key: 'model', label: '模型', kind: 'custom', size: 'xl' },
   { key: 'reasoningEffort', label: '推理强度', kind: 'status', size: 'lg' },
-  { key: 'route', label: '端点', kind: 'mono' },
+  { key: 'reasoningPreset', label: '推理预设', kind: 'status', size: 'lg' },
+  { key: 'subagentKind', label: '子代理', kind: 'status', size: 'lg' },
+  { key: 'serviceTier', label: '服务层级', kind: 'status', size: 'md' },
+  { key: 'route', label: '端点', kind: 'custom' },
   { key: 'upstreamTransport', label: '上游', kind: 'status', size: 'md' },
   { key: 'clientTransport', label: '接入', kind: 'status', size: 'md' },
   { key: 'tokenDetails', label: 'TOKEN', kind: 'numeric', size: 'xl' },
@@ -43,11 +49,39 @@ const columns = computed(() => defineTableColumns<KeyUsageRecord>([
     </p>
     <div class="flex h-120 min-h-0 overflow-hidden">
       <BaseTable class="min-w-0 flex-1" :columns="columns" :rows="rows" :loading="loading" scrollbar-always-visible :empty-text="error ? '请求日志加载失败，请点击顶部刷新重试' : '所选条件下暂无记录'">
+        <template #provider="{ row }">
+          <ProviderIconGroup
+            :provider="row.provider"
+            :authentication-kind="row.authenticationKind"
+            size="sm"
+          />
+        </template>
         <template #model="{ row }">
           <code class="block max-w-full truncate font-mono text-cp-sm leading-none font-heavy text-cp-text">{{ row.model || '—' }}</code>
         </template>
         <template #reasoningEffort="{ row }">
           <span class="whitespace-nowrap text-cp-sm font-bold text-cp-text">{{ row.reasoningEffort || '—' }}</span>
+        </template>
+        <template #reasoningPreset="{ row }">
+          <span class="whitespace-nowrap text-cp-sm font-bold text-cp-text">{{ row.reasoningPreset || '—' }}</span>
+        </template>
+        <template #subagentKind="{ row }">
+          <span class="whitespace-nowrap text-cp-sm font-bold text-cp-text">{{ row.subagentKind || '—' }}</span>
+        </template>
+        <template #serviceTier="{ row }">
+          <span class="whitespace-nowrap text-cp-sm font-bold text-cp-text">{{ row.serviceTier || '—' }}</span>
+        </template>
+        <template #route="{ row }">
+          <div class="inline-flex max-w-full items-center gap-1.5 whitespace-nowrap">
+            <code class="truncate font-mono text-cp-sm font-emphasis">{{ row.route || '—' }}</code>
+            <Minimize2
+              v-if="row.compact"
+              class="size-3.5 shrink-0 text-cp-orange-text"
+              title="压缩请求"
+              aria-label="压缩请求"
+              stroke-width="2.4"
+            />
+          </div>
         </template>
         <template #upstreamTransport="{ row }">
           <UsageTransportBadge :transport="row.upstreamTransport" />

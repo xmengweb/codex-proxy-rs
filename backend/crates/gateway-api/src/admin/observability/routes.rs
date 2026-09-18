@@ -43,10 +43,11 @@ where
     // 概览默认按中国时区当日统计，与单独趋势接口保持同一口径。
     let range = dashboard_today_range(query.start_time.as_deref(), query.end_time.as_deref())
         .map_err(map_wire_error)?;
+    let filter = query.usage_filter();
     let result = state
         .admin_services()
         .observability()
-        .dashboard_summary(range, domain_trend_kind(kind))
+        .dashboard_summary(range, filter, domain_trend_kind(kind))
         .await
         .map_err(map_service_error)?;
     Ok(AdminResponse::new(
@@ -66,10 +67,11 @@ where
     let kind = query.trend_kind().map_err(map_wire_error)?;
     let range = dashboard_today_range(query.start_time.as_deref(), query.end_time.as_deref())
         .map_err(map_wire_error)?;
+    let filter = query.usage_filter();
     let result = state
         .admin_services()
         .observability()
-        .dashboard_trend(range, domain_trend_kind(kind))
+        .dashboard_trend(range, filter, domain_trend_kind(kind))
         .await
         .map_err(map_service_error)?;
     Ok(AdminResponse::new(

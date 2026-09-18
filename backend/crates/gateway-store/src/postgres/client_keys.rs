@@ -20,7 +20,7 @@ use gateway_admin::{
             ClientKeyListQuery as AdminClientKeyListQuery, ClientKeyPage as AdminClientKeyPage,
             ClientKeyRecord as AdminClientKeyRecord, ClientKeySecret as AdminClientKeySecret,
             ClientKeySort as AdminClientKeySort, ClientKeySortField as AdminClientKeySortField,
-            DeleteClientKey, NewClientKey, SetClientKeyEnabled,
+            DeleteClientKey, NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled,
             SortDirection as AdminSortDirection, UpdateClientKey as AdminUpdateClientKey,
         },
     },
@@ -858,6 +858,34 @@ impl ClientKeyStore for PgAdminClientKeyStore {
             .await
             .map_err(|error| admin_store_error(ENTITY, error))?;
         Ok((admin_revision(revision)?, self.required_record(&id).await?))
+    }
+
+    async fn reset_client_key_budget(
+        &self,
+        command: ResetClientKeyBudget,
+        context: &MutationContext,
+    ) -> AdminStoreResult<gateway_admin::model::Revision> {
+        self.control_plane
+            .reset_client_api_key_budget(
+                command.id.as_str(),
+                mutation_audit(
+                    context,
+                    "reset_budget",
+                    "client_api_key",
+                    command.id.as_str(),
+                    vec![
+                        "daily_start".to_owned(),
+                        "daily_end".to_owned(),
+                        "weekly_start".to_owned(),
+                        "weekly_end".to_owned(),
+                        "daily_used_usd".to_owned(),
+                        "weekly_used_usd".to_owned(),
+                    ],
+                ),
+            )
+            .await
+            .map_err(|error| admin_store_error(ENTITY, error))
+            .and_then(admin_revision)
     }
 
     async fn delete_client_key(

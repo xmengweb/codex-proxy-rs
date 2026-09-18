@@ -5,6 +5,8 @@ import { useDashboard } from './composables/useDashboard'
 const {
   loading,
   refreshing,
+  searchQuery,
+  providerQuery,
   activeTrendKind,
   metrics,
   trendPoints,
@@ -27,6 +29,8 @@ const {
 <template>
   <DashboardContent
     v-model:trend-kind="activeTrendKind"
+    v-model:search-query="searchQuery"
+    v-model:provider-query="providerQuery"
     :loading="loading"
     :refreshing="refreshing"
     :last-refreshed-at="lastRefreshedAt"

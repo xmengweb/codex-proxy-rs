@@ -50,6 +50,7 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
   const scopedParams = () => ({
     ...options.timeRangeParams.value,
     ...(providerQuery.value ? { provider: providerQuery.value } : {}),
+    ...(search.value ? { search: search.value } : {}),
   })
   const usagePagination = computed(() => ({
     currentPage: currentPage.value,
@@ -233,7 +234,7 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
     search,
     () => {
       if (!disposed && options.active.value && tableParams.search !== search.value)
-        void reloadLatestTable()
+        void loadUsageRecords()
     },
     { debounce: 250 },
   )

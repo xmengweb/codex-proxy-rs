@@ -31,7 +31,7 @@ use gateway_admin::{
         },
         client_keys::{
             ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
-            NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+            NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
         },
         observability::{
             DashboardObservation, DecimalAmount, DiagnosticDimension, DiagnosticObservation,
@@ -786,6 +786,14 @@ impl ClientKeyStore for MemoryClientKeyStore {
         Err(unavailable("client key enabled"))
     }
 
+    async fn reset_client_key_budget(
+        &self,
+        _: ResetClientKeyBudget,
+        _: &MutationContext,
+    ) -> AdminStoreResult<Revision> {
+        Err(unavailable("client key budget reset"))
+    }
+
     async fn delete_client_key(
         &self,
         _: DeleteClientKey,
@@ -1000,6 +1008,7 @@ impl ObservabilityStore for UnusedStore {
         &self,
         range: TimeRange,
         _: DateTime<Utc>,
+        _: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation> {
         *self
             .dashboard_summary_range
@@ -1012,7 +1021,11 @@ impl ObservabilityStore for UnusedStore {
             .ok_or_else(|| unavailable("dashboard"))
     }
 
-    async fn dashboard_trend(&self, _: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>> {
+    async fn dashboard_trend(
+        &self,
+        _: TimeRange,
+        _: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>> {
         Err(unavailable("dashboard trend"))
     }
 

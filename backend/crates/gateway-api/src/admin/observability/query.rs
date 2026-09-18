@@ -14,12 +14,25 @@ pub struct DashboardQuery {
     pub kind: Option<String>,
     pub start_time: Option<String>,
     pub end_time: Option<String>,
+    pub provider: Option<String>,
+    pub model: Option<String>,
+    pub search: Option<String>,
 }
 
 impl DashboardQuery {
     /// 解析 dashboard 趋势类型。
     pub fn trend_kind(&self) -> Result<TrendKind, WireValidationError> {
         TrendKind::parse(self.kind.as_deref())
+    }
+
+    /// 将 Dashboard 的筛选条件映射为统一用量筛选。
+    pub fn usage_filter(&self) -> domain::UsageFilter {
+        domain::UsageFilter {
+            provider_kind: non_empty(self.provider.clone()),
+            model: non_empty(self.model.clone()),
+            search: non_empty(self.search.clone()),
+            ..domain::UsageFilter::default()
+        }
     }
 }
 

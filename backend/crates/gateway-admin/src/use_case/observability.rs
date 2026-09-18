@@ -44,20 +44,26 @@ const HEALTH_TIMELINE_STABLE_RELIABILITY: f64 = 99.0;
 const DASHBOARD_QUERY_BUCKET_SECONDS: i64 = 2;
 const DASHBOARD_QUERY_CACHE_RETENTION: StdDuration = StdDuration::from_secs(2);
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct DashboardQueryKey {
     start: DateTime<Utc>,
     end_bucket: i64,
+    provider_kind: Option<String>,
+    model: Option<String>,
+    search: Option<String>,
 }
 
 impl DashboardQueryKey {
-    fn new(range: TimeRange) -> Self {
+    fn new(range: TimeRange, filter: &UsageFilter) -> Self {
         Self {
             start: range.start,
             end_bucket: range
                 .end
                 .timestamp()
                 .div_euclid(DASHBOARD_QUERY_BUCKET_SECONDS),
+            provider_kind: filter.provider_kind.clone(),
+            model: filter.model.clone(),
+            search: filter.search.clone(),
         }
     }
 }
@@ -100,10 +106,15 @@ pub trait ObservabilityService: Send + Sync {
     async fn dashboard_summary(
         &self,
         range: TimeRange,
+        filter: UsageFilter,
         kind: TrendKind,
     ) -> Result<DashboardResult, AdminError>;
-    async fn dashboard_trend(&self, range: TimeRange, kind: TrendKind)
-    -> Result<Trend, AdminError>;
+    async fn dashboard_trend(
+        &self,
+        range: TimeRange,
+        filter: UsageFilter,
+        kind: TrendKind,
+    ) -> Result<Trend, AdminError>;
     async fn usage_records(&self, query: UsageQuery) -> Result<UsagePage, AdminError>;
     async fn usage_record_detail(&self, request_id: &str) -> Result<UsageDetail, AdminError>;
     async fn usage_summary(
@@ -153,10 +164,11 @@ impl DefaultObservabilityService {
     async fn load_dashboard_summary(
         &self,
         range: TimeRange,
+        filter: UsageFilter,
     ) -> Result<DashboardResult, AdminError> {
         let observed_at = Utc::now();
         let (mut observation, settings, runtime_slots) = futures::try_join!(
-            self.store.dashboard_summary(range, observed_at),
+            self.store.dashboard_summary(range, observed_at, filter),
             self.settings.load_runtime_settings(),
             self.store.dashboard_runtime_slots(observed_at),
         )
@@ -235,14 +247,15 @@ impl ObservabilityService for DefaultObservabilityService {
     async fn dashboard_summary(
         &self,
         range: TimeRange,
+        filter: UsageFilter,
         kind: TrendKind,
     ) -> Result<DashboardResult, AdminError> {
         let cell = self
             .dashboard_queries
-            .result_cell(DashboardQueryKey::new(range))
+            .result_cell(DashboardQueryKey::new(range, &filter))
             .await;
         let mut result = cell
-            .get_or_init(|| self.load_dashboard_summary(range))
+            .get_or_init(|| self.load_dashboard_summary(range, filter.clone()))
             .await
             .clone()?;
         result.trend = trend(kind, result.observation.trend.clone())?;
@@ -252,11 +265,12 @@ impl ObservabilityService for DefaultObservabilityService {
     async fn dashboard_trend(
         &self,
         range: TimeRange,
+        filter: UsageFilter,
         kind: TrendKind,
     ) -> Result<Trend, AdminError> {
         let points = self
             .store
-            .dashboard_trend(range)
+            .dashboard_trend(range, filter)
             .await
             .map_err(|error| map_store_error(error, "dashboard trend"))?;
         trend(kind, points)

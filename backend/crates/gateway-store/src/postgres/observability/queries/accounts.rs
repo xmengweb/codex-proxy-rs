@@ -6,6 +6,7 @@ pub(crate) async fn provider_account_usage(
     pool: &PgPool,
     query: ProviderAccountUsageQuery,
 ) -> StoreResult<Vec<ProviderAccountUsageObservation>> {
+    query.filter.validate()?;
     if let Some(account_ids) = &query.account_ids {
         validate_account_ids(account_ids)?;
     }
@@ -31,6 +32,7 @@ pub(crate) async fn provider_account_usage(
     statement.push(" and mr.started_at < ");
     statement.push_bind(query.range.end);
     push_completed_usage_fact_filter(&mut statement, "mr");
+    push_usage_filter(&mut statement, &query.filter, "mr");
     if let Some(account_ids) = &query.account_ids {
         statement.push(" where pa.id = any(");
         statement.push_bind(account_ids.clone());
@@ -140,7 +142,7 @@ pub(crate) async fn provider_account_usage(
         .map(|item| item.account_id.clone())
         .collect::<Vec<_>>();
     let mut request_buckets = if query.include_hourly_request_buckets {
-        provider_account_request_buckets(pool, query.range, &account_ids).await?
+        provider_account_request_buckets(pool, query.range, &account_ids, &query.filter).await?
     } else {
         HashMap::new()
     };
@@ -169,23 +171,32 @@ pub(crate) async fn provider_account_request_buckets(
     pool: &PgPool,
     range: ObservabilityRange,
     account_ids: &[String],
+    filter: &UsageRecordFilter,
 ) -> StoreResult<HashMap<String, Vec<ProviderAccountRequestBucket>>> {
+    filter.validate()?;
     let completed_usage = completed_usage_fact_predicate("mr");
-    let statement = format!(
+    let mut statement = QueryBuilder::<Postgres>::new(
         "select provider_account_ref,
-                floor(extract(epoch from (started_at - $1)) / 3600)::bigint as bucket_index,
+                floor(extract(epoch from (mr.started_at - ",
+    );
+    statement.push_bind(range.start);
+    statement.push(
+        ") / 3600)::bigint as bucket_index,
                 count(*)::bigint as request_count
          from model_requests mr
-         where mr.provider_account_ref = any($2::text[])
-           and mr.started_at >= $1 and mr.started_at < $3
-           and {completed_usage}
-         group by mr.provider_account_ref, bucket_index
-         order by mr.provider_account_ref, bucket_index"
+         where mr.provider_account_ref = any(",
     );
-    let rows = sqlx::query(sqlx::AssertSqlSafe(statement))
-        .bind(range.start)
-        .bind(account_ids)
-        .bind(range.end)
+    statement.push_bind(account_ids.to_vec());
+    statement.push("::text[]) and mr.started_at >= ");
+    statement.push_bind(range.start);
+    statement.push(" and mr.started_at < ");
+    statement.push_bind(range.end);
+    statement.push(format!(" and {completed_usage}"));
+    push_usage_filter(&mut statement, filter, "mr");
+    statement.push(" group by mr.provider_account_ref, bucket_index");
+    statement.push(" order by mr.provider_account_ref, bucket_index");
+    let rows = statement
+        .build()
         .fetch_all(pool)
         .await
         .map_err(|_| postgres_unavailable("load provider account request timeline"))?;

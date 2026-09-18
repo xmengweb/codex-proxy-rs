@@ -38,7 +38,7 @@ use gateway_admin::{
         client_distribution::CodexDesktopWindowsDownloads,
         client_keys::{
             ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
-            NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+            NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
         },
         observability::{
             DashboardDesktopRelease, DashboardObservation, DashboardWireAttribute,
@@ -609,6 +609,14 @@ impl ClientKeyStore for UnavailableStore {
         Err(unavailable("client key enabled"))
     }
 
+    async fn reset_client_key_budget(
+        &self,
+        _: ResetClientKeyBudget,
+        _: &MutationContext,
+    ) -> AdminStoreResult<Revision> {
+        Err(unavailable("client key budget reset"))
+    }
+
     async fn delete_client_key(
         &self,
         _: DeleteClientKey,
@@ -624,11 +632,16 @@ impl ObservabilityStore for UnavailableStore {
         &self,
         _: TimeRange,
         _: DateTime<Utc>,
+        _: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation> {
         Err(unavailable("dashboard"))
     }
 
-    async fn dashboard_trend(&self, _: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>> {
+    async fn dashboard_trend(
+        &self,
+        _: TimeRange,
+        _: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>> {
         Err(unavailable("dashboard trend"))
     }
 

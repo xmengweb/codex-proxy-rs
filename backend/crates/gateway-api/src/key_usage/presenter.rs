@@ -129,7 +129,13 @@ pub(super) struct RecordView {
     created_at: DateTime<Utc>,
     model: Option<String>,
     route: Option<String>,
+    provider: Option<String>,
+    authentication_kind: Option<String>,
+    service_tier: Option<String>,
     reasoning_effort: Option<String>,
+    reasoning_preset: Option<String>,
+    subagent_kind: Option<String>,
+    compact: Option<bool>,
     client_transport: Option<String>,
     upstream_transport: Option<String>,
     token_details: Option<TokenDetailsView>,
@@ -148,6 +154,14 @@ pub(super) struct RecordView {
 #[serde(rename_all = "camelCase")]
 struct OutputTimingView {
     #[serde(skip_serializing_if = "Option::is_none")]
+    transport_decision_wait_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ws_connect_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    upstream_headers_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider_processing_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     first_event_ms: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     first_reasoning_ms: Option<u64>,
@@ -163,7 +177,13 @@ fn success_record(value: UsageListRecord) -> RecordView {
         created_at: value.started_at,
         model: value.requested_model_id,
         route: Some(value.endpoint),
+        provider: value.provider_kind,
+        authentication_kind: value.provider_account_authentication_kind,
+        service_tier: value.service_tier,
         reasoning_effort: value.reasoning_effort,
+        reasoning_preset: value.reasoning_preset,
+        subagent_kind: value.subagent_kind,
+        compact: Some(value.compact),
         client_transport: Some(value.client_transport),
         upstream_transport: value.upstream_transport,
         token_details,
@@ -171,6 +191,10 @@ fn success_record(value: UsageListRecord) -> RecordView {
         latency_ms: value.latency_ms,
         first_token_latency_ms: value.first_token_ms,
         latency_details: OutputTimingView {
+            transport_decision_wait_ms: value.transport_decision_wait_ms,
+            ws_connect_ms: value.connect_ms,
+            upstream_headers_ms: value.headers_ms,
+            provider_processing_ms: value.provider_processing_ms,
             first_event_ms: value.first_event_ms,
             first_reasoning_ms: value.first_reasoning_ms,
             first_text_ms: value.first_text_ms,
@@ -189,7 +213,13 @@ fn error_record(value: OpsError) -> RecordView {
         created_at: value.occurred_at,
         model: value.requested_model_id,
         route: value.endpoint,
+        provider: value.provider_kind,
+        authentication_kind: value.provider_account_authentication_kind,
+        service_tier: value.service_tier,
         reasoning_effort: value.reasoning_effort,
+        reasoning_preset: value.reasoning_preset,
+        subagent_kind: value.subagent_kind,
+        compact: value.compact,
         client_transport: value.client_transport,
         upstream_transport: value.upstream_transport,
         token_details: None,

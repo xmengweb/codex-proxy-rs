@@ -4,6 +4,9 @@ export * from './modules/account-groups'
 // 账号管理
 export * from './modules/accounts'
 
+// 管理员账户
+export * from './modules/admin-users'
+
 // API Keys 管理
 export * from './modules/api-keys'
 

@@ -10,7 +10,8 @@ use gateway_admin::model::client_keys::{
     ClientKeyCursor, ClientKeyCursorValue as DomainCursorValue, ClientKeyListQuery,
     ClientKeyMutation, ClientKeyPage, ClientKeyPageSize, ClientKeyRecord, ClientKeySecret,
     ClientKeySort as DomainSort, ClientKeySortField as DomainSortField, CreateClientKey,
-    CreatedClientKey, DeleteClientKey, SetClientKeyEnabled, SortDirection, UpdateClientKey,
+    CreatedClientKey, DeleteClientKey, ResetClientKeyBudget, SetClientKeyEnabled, SortDirection,
+    UpdateClientKey,
 };
 use gateway_core::{
     engine::budget::ClientBudgetLimits,
@@ -706,6 +707,10 @@ where
             "/api/admin/client-keys/delete",
             post(delete_client_key::<S>),
         )
+        .route(
+            "/api/admin/client-keys/reset-budget",
+            post(reset_client_key_budget::<S>),
+        )
 }
 
 async fn list_client_keys<S>(
@@ -828,6 +833,27 @@ where
             .set_enabled(
                 &auth.context().mutation_context(),
                 SetClientKeyEnabled { id, enabled: true },
+            )
+            .await,
+    )
+}
+
+async fn reset_client_key_budget<S>(
+    auth: AdminAuth,
+    State(state): State<S>,
+    AdminJson(payload): AdminJson<ClientKeyMutationRequest>,
+) -> Result<impl IntoResponse, AdminError>
+where
+    S: SessionState + Send + Sync,
+{
+    let id = payload.into_domain_id().map_err(map_wire_error)?;
+    mutation_response(
+        state
+            .admin_services()
+            .client_keys()
+            .reset_budget(
+                &auth.context().mutation_context(),
+                ResetClientKeyBudget { id },
             )
             .await,
     )

@@ -103,9 +103,13 @@ pub(crate) async fn request_metrics(
     request_metrics_from_row(&row)
 }
 
-pub(crate) async fn dashboard_totals(pool: &PgPool) -> StoreResult<DashboardTotals> {
+pub(crate) async fn dashboard_totals(
+    pool: &PgPool,
+    filter: &UsageRecordFilter,
+) -> StoreResult<DashboardTotals> {
     // 卡片脚注的“总计”覆盖全部历史；只聚合页面实际展示的字段，避免重复计算
     // 当前区间指标所需的延迟分位数。
+    filter.validate()?;
     let fact = completed_usage_fact_predicate("mr");
     let mut query = QueryBuilder::<Postgres>::new(format!(
         "select count(*)::bigint as request_count,
@@ -117,6 +121,7 @@ pub(crate) async fn dashboard_totals(pool: &PgPool) -> StoreResult<DashboardTota
            from model_requests mr
           where mr.recovered_at is null"
     ));
+    push_usage_filter(&mut query, filter, "mr");
     let row = query
         .build()
         .fetch_one(pool)

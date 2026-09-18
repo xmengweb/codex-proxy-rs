@@ -414,6 +414,7 @@ pub struct ProviderAccountUsageQuery {
     pub range: ObservabilityRange,
     pub account_ids: Option<Vec<String>>,
     pub limit: u16,
+    pub filter: UsageRecordFilter,
     pub(crate) include_hourly_request_buckets: bool,
 }
 
@@ -430,6 +431,7 @@ impl ProviderAccountUsageQuery {
             limit: u16::try_from(account_ids.len())
                 .map_err(|_| invalid("account usage query is too large"))?,
             account_ids: Some(account_ids),
+            filter: UsageRecordFilter::default(),
             include_hourly_request_buckets: false,
         })
     }
@@ -442,8 +444,15 @@ impl ProviderAccountUsageQuery {
             range,
             account_ids: None,
             limit,
+            filter: UsageRecordFilter::default(),
             include_hourly_request_buckets: false,
         })
+    }
+
+    pub fn with_filter(mut self, filter: UsageRecordFilter) -> StoreResult<Self> {
+        filter.validate()?;
+        self.filter = filter;
+        Ok(self)
     }
 
     pub fn with_hourly_request_buckets(mut self) -> StoreResult<Self> {
@@ -480,6 +489,7 @@ pub struct DashboardObservation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageListRecord {
     pub id: String,
+    pub client_api_key_name: Option<String>,
     pub endpoint: String,
     pub client_transport: String,
     pub requested_model_id: Option<String>,
@@ -756,10 +766,12 @@ pub trait ObservabilityRepository: Send + Sync {
         &self,
         range: ObservabilityRange,
         observed_at: DateTime<Utc>,
+        filter: UsageRecordFilter,
     ) -> StoreResult<DashboardObservation>;
     async fn dashboard_trend(
         &self,
         range: ObservabilityRange,
+        filter: UsageRecordFilter,
     ) -> StoreResult<Vec<RequestMetricPoint>>;
     async fn usage_trend(
         &self,

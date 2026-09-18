@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Save, Undo2 } from '@lucide/vue'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -8,9 +9,11 @@ import BaseConfirmModal from '@/components/base/BaseConfirmModal.vue'
 import BaseIconButton from '@/components/base/BaseIconButton.vue'
 import BasePageHeader from '@/components/base/BasePageHeader.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import { useAuthStore } from '@/stores/modules/auth'
 
 import AccountAutoFreezeCard from './components/AccountAutoFreezeCard.vue'
 import AdminApiKeyCard from './components/AdminApiKeyCard.vue'
+import AdminUsersCard from './components/AdminUsersCard.vue'
 import SettingsBackupSection from './components/backup/SettingsBackupSection.vue'
 import ClientVersionSettings from './components/client-version/index.vue'
 import FastPolicyCard from './components/FastPolicyCard.vue'
@@ -27,6 +30,7 @@ import { rotationOptions } from './constants'
 
 const route = useRoute()
 const router = useRouter()
+const { isReadOnlyAdmin } = storeToRefs(useAuthStore())
 const section = computed(() => route.name === 'settings-backup' ? 'backup' : 'runtime')
 
 function switchSection(value: string): void {
@@ -98,10 +102,10 @@ onMounted(() => {
       />
       <div v-if="section === 'runtime'" class="flex items-center justify-end gap-2">
         <span v-if="hasChanges" class="mr-1 size-1.5 shrink-0 rounded-full bg-cp-warning" aria-hidden="true" />
-        <BaseIconButton v-if="hasChanges" label="撤销更改" variant="filled" :disabled="saving || loading" @click="resetSettings">
+        <BaseIconButton v-if="hasChanges" label="撤销更改" variant="filled" :disabled="saving || loading || isReadOnlyAdmin" @click="resetSettings">
           <Undo2 class="size-4" />
         </BaseIconButton>
-        <BaseButton variant="primary" :loading="saving" :disabled="loading || !hasChanges || !!error" @click="saveSettings">
+        <BaseButton variant="primary" :loading="saving" :disabled="loading || isReadOnlyAdmin || !hasChanges || !!error" @click="saveSettings">
           <template #icon>
             <Save class="size-4" />
           </template>
@@ -131,12 +135,15 @@ onMounted(() => {
         :regenerating="adminKeyRegenerating"
         :deleting="adminKeyDeleting"
         :generated-key="generatedAdminApiKey"
+        :read-only="isReadOnlyAdmin"
         @regenerate="handleRegenerateAdminApiKey"
         @request-delete="showDeleteAdminKeyModal = true"
         @copy="copyAdminApiKey"
       />
 
-      <fieldset :disabled="saving || loading || !!error" class="m-0 grid min-w-0 gap-5 border-0 p-0" aria-label="运行设置">
+      <AdminUsersCard :read-only="isReadOnlyAdmin" />
+
+      <fieldset :disabled="saving || loading || isReadOnlyAdmin || !!error" class="m-0 grid min-w-0 gap-5 border-0 p-0" aria-label="运行设置">
         <RuntimeSettingsCard
           v-model:max-concurrent-per-account="maxConcurrentPerAccountValue"
           v-model:request-interval-ms="requestIntervalMsValue"
@@ -180,7 +187,9 @@ onMounted(() => {
       </fieldset>
     </div>
 
-    <SettingsBackupSection v-show="section === 'backup'" class="mt-5" :active="section === 'backup'" />
+    <fieldset v-show="section === 'backup'" :disabled="isReadOnlyAdmin" class="m-0 border-0 p-0">
+      <SettingsBackupSection class="mt-5" :active="section === 'backup'" />
+    </fieldset>
 
     <BaseConfirmModal
       v-model="showDeleteAdminKeyModal"

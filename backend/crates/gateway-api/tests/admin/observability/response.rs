@@ -954,6 +954,7 @@ async fn usage_route_should_expose_table_facts_without_detail_payload() {
         .expect("usage records")
         .push(UsageListRecord {
             id: "request_endpoint".to_owned(),
+            client_api_key_name: Some("snapshot-key".to_owned()),
             endpoint: "/v1/responses".to_owned(),
             client_transport: "websocket".to_owned(),
             requested_model_id: Some("grok-4.5".to_owned()),

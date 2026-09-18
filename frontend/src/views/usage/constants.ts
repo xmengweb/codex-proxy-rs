@@ -14,6 +14,12 @@ export const usageRecordColumns = defineTableColumns<UsageDisplayRecord>([
     size: '3xl',
   },
   {
+    key: 'clientApiKeyName',
+    label: '密钥',
+    kind: 'identity',
+    size: 'xl',
+  },
+  {
     key: 'provider',
     label: '平台/类型',
     kind: 'status',

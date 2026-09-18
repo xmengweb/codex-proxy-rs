@@ -2,7 +2,8 @@
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Postgres, Transaction};
+use gateway_admin::model::auth::{AdminRole, AdminUser};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 
 use crate::{Revision, StoreError, StoreResult, postgres_unavailable, require_nonempty};
 
@@ -71,6 +72,17 @@ impl AdminAuditEvent {
 pub trait AdminSecurityAuditRepository: Send + Sync {
     async fn password_hash(&self, admin_user_id: &str) -> StoreResult<Option<String>>;
 
+    async fn admin_user(&self, admin_user_id: &str) -> StoreResult<Option<AdminUser>>;
+
+    async fn admin_users(&self) -> StoreResult<Vec<AdminUser>>;
+
+    async fn create_admin_user(
+        &self,
+        admin_user_id: &str,
+        password_hash: &str,
+        role: AdminRole,
+    ) -> StoreResult<bool>;
+
     async fn create_password_hash_if_absent(
         &self,
         admin_user_id: &str,
@@ -101,6 +113,52 @@ impl AdminSecurityAuditRepository for PgAdminSecurityAuditRepository {
             .fetch_optional(&self.pool)
             .await
             .map_err(|_| postgres_unavailable("read admin password hash"))
+    }
+
+    async fn admin_user(&self, admin_user_id: &str) -> StoreResult<Option<AdminUser>> {
+        require_nonempty("admin user", "id", admin_user_id)?;
+        let row = sqlx::query(
+            "select id, role, created_at from admin_users where id = $1",
+        )
+        .bind(admin_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|_| postgres_unavailable("read admin user"))?;
+        row.map(admin_user_from_row).transpose()
+    }
+
+    async fn admin_users(&self) -> StoreResult<Vec<AdminUser>> {
+        let rows = sqlx::query(
+            "select id, role, created_at
+             from admin_users
+             order by created_at asc, id asc",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|_| postgres_unavailable("list admin users"))?;
+        rows.into_iter().map(admin_user_from_row).collect()
+    }
+
+    async fn create_admin_user(
+        &self,
+        admin_user_id: &str,
+        password_hash: &str,
+        role: AdminRole,
+    ) -> StoreResult<bool> {
+        require_nonempty("admin user", "id", admin_user_id)?;
+        require_nonempty("admin user", "password_hash", password_hash)?;
+        let result = sqlx::query(
+            "insert into admin_users (id, password_hash, role, created_at, updated_at)
+             values ($1, $2, $3, now(), now())
+             on conflict (id) do nothing",
+        )
+        .bind(admin_user_id)
+        .bind(password_hash)
+        .bind(role.as_str())
+        .execute(&self.pool)
+        .await
+        .map_err(|_| postgres_unavailable("create admin user"))?;
+        Ok(result.rows_affected() == 1)
     }
 
     async fn create_password_hash_if_absent(
@@ -180,6 +238,24 @@ pub(crate) async fn append_admin_audit_event_in_transaction(
     .await
     .map_err(|_| postgres_unavailable("append admin audit event in transaction"))?;
     Ok(())
+}
+
+fn admin_user_from_row(row: sqlx::postgres::PgRow) -> StoreResult<AdminUser> {
+    let username: String = row
+        .try_get("id")
+        .map_err(|_| postgres_unavailable("decode admin user id"))?;
+    let role: String = row
+        .try_get("role")
+        .map_err(|_| postgres_unavailable("decode admin user role"))?;
+    let created_at: DateTime<Utc> = row
+        .try_get("created_at")
+        .map_err(|_| postgres_unavailable("decode admin user timestamp"))?;
+    let role = AdminRole::parse(&role).ok_or_else(|| invalid("invalid admin user role"))?;
+    Ok(AdminUser {
+        username,
+        role,
+        created_at,
+    })
 }
 
 fn invalid(message: &str) -> StoreError {

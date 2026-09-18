@@ -1,7 +1,7 @@
 import request from '../request'
 
 export interface AuthSession {
-  role: 'admin' | 'key'
+  role: 'admin' | 'readonly' | 'key'
   expiresAt: string
 }
 

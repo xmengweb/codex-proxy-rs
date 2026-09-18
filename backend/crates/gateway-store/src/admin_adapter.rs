@@ -231,6 +231,39 @@ impl AuthStore for AuthStoreAdapter {
             .map_err(|error| admin_store_error("admin authentication", error))
     }
 
+    async fn load_admin_user(
+        &self,
+        admin_user_id: &str,
+    ) -> AdminStoreResult<Option<gateway_admin::model::auth::AdminUser>> {
+        postgres::AdminSecurityAuditRepository::admin_user(&self.security, admin_user_id)
+            .await
+            .map_err(|error| admin_store_error("admin authentication", error))
+    }
+
+    async fn list_admin_users(
+        &self,
+    ) -> AdminStoreResult<Vec<gateway_admin::model::auth::AdminUser>> {
+        postgres::AdminSecurityAuditRepository::admin_users(&self.security)
+            .await
+            .map_err(|error| admin_store_error("admin authentication", error))
+    }
+
+    async fn create_admin_user(
+        &self,
+        admin_user_id: &str,
+        password_hash: &str,
+        role: gateway_admin::model::auth::AdminRole,
+    ) -> AdminStoreResult<bool> {
+        postgres::AdminSecurityAuditRepository::create_admin_user(
+            &self.security,
+            admin_user_id,
+            password_hash,
+            role,
+        )
+        .await
+        .map_err(|error| admin_store_error("admin authentication", error))
+    }
+
     async fn create_password_hash_if_absent(
         &self,
         admin_user_id: &str,

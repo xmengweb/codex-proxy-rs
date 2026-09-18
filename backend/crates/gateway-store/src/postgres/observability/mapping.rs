@@ -756,6 +756,7 @@ pub(crate) fn usage_list_record_from_row(
 ) -> StoreResult<UsageListRecord> {
     Ok(UsageListRecord {
         id: get(row, "id")?,
+        client_api_key_name: get(row, "client_api_key_name")?,
         endpoint: get(row, "endpoint")?,
         client_transport: get(row, "client_transport")?,
         requested_model_id: get(row, "requested_model_id")?,

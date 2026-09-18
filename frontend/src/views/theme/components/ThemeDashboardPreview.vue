@@ -13,11 +13,15 @@ import { themeDashboardSummary } from '../fixtures/dashboard'
 const snapshot = dashboardSnapshotView(themeDashboardSummary)
 const trend = dashboardTrendView(themeDashboardSummary.trend)
 const trendKind = shallowRef<DashboardTrendKind>('usage')
+const searchQuery = shallowRef('')
+const providerQuery = shallowRef('')
 </script>
 
 <template>
   <DashboardContent
     v-model:trend-kind="trendKind"
+    v-model:search-query="searchQuery"
+    v-model:provider-query="providerQuery"
     last-refreshed-at="刚刚更新"
     :metrics="snapshot.metrics"
     :trend-points="trend.points"

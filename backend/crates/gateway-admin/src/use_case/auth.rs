@@ -15,8 +15,8 @@ use crate::{
     model::{
         AdminError, AdminErrorKind,
         auth::{
-            AdminAuditEvent, AuditActorKind, AuthSession, LoginCommand, LoginError, LoginResult,
-            SessionSubject,
+            AdminAuditEvent, AdminRole, AdminUser, AuditActorKind, AuthSession,
+            CreateAdminUser, LoginCommand, LoginError, LoginResult, SessionSubject,
         },
     },
     ports::store::AuthStore,
@@ -28,6 +28,18 @@ use super::map_store_error;
 #[async_trait]
 pub trait AuthService: Send + Sync {
     async fn ensure_default_admin(&self, password: &str) -> Result<bool, AdminError>;
+    async fn admin_role(&self, _admin_user_id: &str) -> Result<AdminRole, AdminError> {
+        Ok(AdminRole::Admin)
+    }
+    async fn list_admin_users(&self) -> Result<Vec<AdminUser>, AdminError> {
+        Ok(Vec::new())
+    }
+    async fn create_admin_user(
+        &self,
+        _command: CreateAdminUser,
+    ) -> Result<AdminUser, AdminError> {
+        Err(AdminError::unavailable("管理员账户创建暂不可用"))
+    }
     async fn session(&self, session_id: Option<&str>) -> Result<Option<AuthSession>, AdminError>;
     async fn resolve_admin_user_id(
         &self,
@@ -93,14 +105,16 @@ impl DefaultAuthService {
     async fn authenticate(&self, command: LoginCommand) -> Result<SessionSubject, LoginError> {
         match command {
             LoginCommand::Admin { username, password } => {
-                if username.as_deref().unwrap_or(&self.default_admin_user_id)
-                    != self.default_admin_user_id
-                {
+                let admin_user_id = username
+                    .as_deref()
+                    .unwrap_or(&self.default_admin_user_id)
+                    .trim();
+                if !crate::valid_admin_username(admin_user_id) {
                     return Err(LoginError::InvalidCredentials);
                 }
                 let hash = self
                     .store
-                    .load_password_hash(&self.default_admin_user_id)
+                    .load_password_hash(admin_user_id)
                     .await
                     .map_err(|_| LoginError::Unavailable)?
                     .ok_or(LoginError::InvalidCredentials)?;
@@ -108,7 +122,7 @@ impl DefaultAuthService {
                     return Err(LoginError::InvalidCredentials);
                 }
                 Ok(SessionSubject::Admin {
-                    admin_user_id: self.default_admin_user_id.clone(),
+                    admin_user_id: admin_user_id.to_owned(),
                 })
             }
             LoginCommand::Key { api_key } => {
@@ -138,6 +152,50 @@ impl AuthService for DefaultAuthService {
             .create_password_hash_if_absent(&self.default_admin_user_id, &hash)
             .await
             .map_err(|error| map_store_error(error, "administrator"))
+    }
+
+    async fn admin_role(&self, admin_user_id: &str) -> Result<AdminRole, AdminError> {
+        Ok(self
+            .store
+            .load_admin_user(admin_user_id)
+            .await
+            .map_err(|error| map_store_error(error, "administrator"))?
+            .map(|user| user.role)
+            .unwrap_or(AdminRole::Admin))
+    }
+
+    async fn list_admin_users(&self) -> Result<Vec<AdminUser>, AdminError> {
+        self.store
+            .list_admin_users()
+            .await
+            .map_err(|error| map_store_error(error, "administrator"))
+    }
+
+    async fn create_admin_user(
+        &self,
+        command: CreateAdminUser,
+    ) -> Result<AdminUser, AdminError> {
+        let username = command.username.trim();
+        if !crate::valid_admin_username(username) {
+            return Err(AdminError::invalid("管理员用户名不合法"));
+        }
+        if !crate::valid_admin_password(&command.password) {
+            return Err(AdminError::invalid("管理员密码不符合安全策略"));
+        }
+        let password_hash = hash_admin_password(&command.password)?;
+        let created = self
+            .store
+            .create_admin_user(username, &password_hash, command.role)
+            .await
+            .map_err(|error| map_store_error(error, "administrator"))?;
+        if !created {
+            return Err(AdminError::conflict("管理员用户名已存在"));
+        }
+        self.store
+            .load_admin_user(username)
+            .await
+            .map_err(|error| map_store_error(error, "administrator"))?
+            .ok_or_else(|| AdminError::internal("管理员账户创建后无法读取"))
     }
 
     async fn session(&self, session_id: Option<&str>) -> Result<Option<AuthSession>, AdminError> {

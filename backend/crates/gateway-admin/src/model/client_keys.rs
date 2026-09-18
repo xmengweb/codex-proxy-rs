@@ -195,6 +195,12 @@ pub struct SetClientKeyEnabled {
     pub enabled: bool,
 }
 
+/// 立即清零 Client Key 当前日、周已用额度。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResetClientKeyBudget {
+    pub id: ClientApiKeyId,
+}
+
 /// 删除 Client Key。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeleteClientKey {

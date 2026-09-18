@@ -112,16 +112,17 @@ impl ObservabilityRepository for PgObservabilityRepository {
         &self,
         range: ObservabilityRange,
         observed_at: DateTime<Utc>,
+        filter: UsageRecordFilter,
     ) -> StoreResult<DashboardObservation> {
-        let filter = UsageRecordFilter::default();
         let account_usage_query =
             ProviderAccountUsageQuery::recent(range, DASHBOARD_ACCOUNT_LIMIT)?
+                .with_filter(filter.clone())?
                 .with_hourly_request_buckets()?;
         let recent_query = UsageRecordQuery {
             range,
             filter: UsageRecordFilter {
                 outcome: Some("succeeded".to_owned()),
-                ..UsageRecordFilter::default()
+                ..filter.clone()
             },
             current_page: 1,
             page_size: ObservabilityPageSize::new(10)?,
@@ -130,7 +131,7 @@ impl ObservabilityRepository for PgObservabilityRepository {
         let (totals, (provider_accounts, _)) = futures::try_join!(
             self.query_budget.run(
                 "load dashboard lifetime totals",
-                dashboard_totals(&self.pool)
+                dashboard_totals(&self.pool, &filter)
             ),
             self.account_status_snapshot(observed_at),
         )?;
@@ -161,11 +162,12 @@ impl ObservabilityRepository for PgObservabilityRepository {
     async fn dashboard_trend(
         &self,
         range: ObservabilityRange,
+        filter: UsageRecordFilter,
     ) -> StoreResult<Vec<RequestMetricPoint>> {
         self.query_budget
             .run(
                 "load dashboard request trend",
-                dashboard_request_metric_series(&self.pool, range, &UsageRecordFilter::default()),
+                dashboard_request_metric_series(&self.pool, range, &filter),
             )
             .await
     }
@@ -283,10 +285,11 @@ impl AdminObservabilityStore for PgAdminObservabilityStore {
         &self,
         range: admin_observability::TimeRange,
         observed_at: DateTime<Utc>,
+        filter: admin_observability::UsageFilter,
     ) -> AdminStoreResult<admin_observability::DashboardObservation> {
         let observation = self
             .repository
-            .dashboard_summary(store_range(range)?, observed_at)
+            .dashboard_summary(store_range(range)?, observed_at, store_usage_filter(filter))
             .await
             .map_err(observability_error)?;
         admin_dashboard_observation(observation)
@@ -359,9 +362,10 @@ impl AdminObservabilityStore for PgAdminObservabilityStore {
     async fn dashboard_trend(
         &self,
         range: admin_observability::TimeRange,
+        filter: admin_observability::UsageFilter,
     ) -> AdminStoreResult<Vec<admin_observability::RequestMetricPoint>> {
         self.repository
-            .dashboard_trend(store_range(range)?)
+            .dashboard_trend(store_range(range)?, store_usage_filter(filter))
             .await
             .map_err(observability_error)?
             .into_iter()

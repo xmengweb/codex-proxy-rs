@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -10,6 +11,7 @@ import BaseTable from '@/components/base/BaseTable/index.vue'
 import LastUsedAtCell from '@/components/LastUsedAtCell.vue'
 import { useAccountGroupCatalog } from '@/composables/useAccountGroupCatalog'
 import { usePageSelection } from '@/composables/usePageSelection'
+import { useAuthStore } from '@/stores/modules/auth'
 import ApiKeyActions from './components/ApiKeyActions.vue'
 import ApiKeyBudgetCell from './components/ApiKeyBudgetCell.vue'
 import ApiKeyCreateModal from './components/ApiKeyCreateModal.vue'
@@ -25,6 +27,7 @@ import { useApiKeyUse } from './composables/useApiKeyUse'
 import { apiKeyColumns } from './constants'
 
 const selectedIds = ref<Set<string>>(new Set())
+const { isReadOnlyAdmin } = storeToRefs(useAuthStore())
 const {
   loading,
   apiKeys,
@@ -47,15 +50,18 @@ const {
   showFormModal,
   showDeleteModal,
   showSingleDeleteModal,
+  showResetBudgetModal,
   showKeyModal,
   showAllAccountsConfirm,
   createdKey,
   createdKeyName,
   editingKey,
   pendingDeleteKey,
+  pendingResetBudgetKey,
   savingKey,
   deletingKey,
   batchDeleting,
+  resettingBudget,
   updatingStatusKeyIds,
   revealingKeyIds,
   form,
@@ -66,6 +72,8 @@ const {
   requestDeleteKey,
   handleDelete,
   handleBatchDelete,
+  requestResetBudget,
+  handleResetBudget,
   handleToggleStatus,
   copyToClipboard,
   revealPlaintextKey,
@@ -111,6 +119,7 @@ watch(
         <ApiKeyFilters
           v-model:search="searchQuery"
           :batch-deleting="batchDeleting"
+          :read-only="isReadOnlyAdmin"
           :selected-count="selectedIds.size"
           @create="openCreate"
           @delete-selected="showDeleteModal = true"
@@ -185,11 +194,14 @@ watch(
             <template #actions="{ row }">
               <ApiKeyActions
                 :api-key="row"
+                :read-only="isReadOnlyAdmin"
                 :deleting="deletingKey"
+                :resetting-budget="resettingBudget"
                 :revealing="revealingKeyIds.has(row.id)"
                 :updating-status="updatingStatusKeyIds.has(row.id)"
                 @edit="openEdit"
                 @delete="requestDeleteKey"
+                @reset-budget="requestResetBudget"
                 @import-ccs="importToCcs"
                 @toggle="handleToggleStatus"
                 @use="openUseKeyModal"
@@ -251,6 +263,19 @@ watch(
     >
       <p class="m-0">
         确定删除选中的 {{ selectedIds.size }} 个 API Key 吗？
+      </p>
+    </BaseConfirmModal>
+
+    <BaseConfirmModal
+      v-model="showResetBudgetModal"
+      title="重置 API Key 额度"
+      description="会将当前日用量和周用量立即清零，并以本次重置时间重新计算日、周重置时间；不修改日限额和周限额。"
+      confirm-text="确认重置"
+      :loading="resettingBudget"
+      @confirm="handleResetBudget"
+    >
+      <p class="m-0">
+        确定重置 {{ pendingResetBudgetKey?.name || pendingResetBudgetKey?.prefix || '该 API Key' }} 的日、周已用额度，并从现在开始新的日、周周期吗？
       </p>
     </BaseConfirmModal>
 
