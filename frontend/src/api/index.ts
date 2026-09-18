@@ -4,11 +4,13 @@ export * from './modules/account-groups'
 // 账号管理
 export * from './modules/accounts'
 
+// 管理员账户
+export * from './modules/admin-users'
+
 // API Keys 管理
 export * from './modules/api-keys'
 
 // 认证相关
-export * from './modules/admin-users'
 export * from './modules/auth'
 
 // 备份管理
