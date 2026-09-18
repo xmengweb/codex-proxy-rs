@@ -44,7 +44,7 @@ const HEALTH_TIMELINE_STABLE_RELIABILITY: f64 = 99.0;
 const DASHBOARD_QUERY_BUCKET_SECONDS: i64 = 2;
 const DASHBOARD_QUERY_CACHE_RETENTION: StdDuration = StdDuration::from_secs(2);
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct DashboardQueryKey {
     start: DateTime<Utc>,
     end_bucket: i64,
