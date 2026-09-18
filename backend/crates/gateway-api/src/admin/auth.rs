@@ -1,15 +1,24 @@
 //! 管理端权限校验与请求审计上下文。
 
 use axum::{
-    extract::FromRequestParts,
-    http::{HeaderMap, request::Parts},
+    Router,
+    extract::{FromRequestParts, State},
+    http::{HeaderMap, Method, StatusCode, request::Parts},
+    response::IntoResponse,
+    routing::{get, post},
 };
-use gateway_admin::model::auth::{AdminPrincipal, AdminRequestContext};
+use chrono::{DateTime, Utc};
+use gateway_admin::model::{
+    auth::{AdminPrincipal, AdminRequestContext, AdminRole, AdminUser, CreateAdminUser},
+};
+use serde::{Deserialize, Serialize};
 use tower_http::request_id::RequestId;
 
 use crate::{auth::SessionState, session_cookie};
 
-use super::{AdminError, wire::map_admin_service_error};
+use super::{
+    AdminAuth, AdminEnvelope, AdminError, AdminJson, AdminResponse, wire::map_admin_service_error,
+};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
@@ -33,6 +42,17 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let principal = require_admin_auth(state, &parts.headers).await?;
+        if let AdminPrincipal::Session { admin_user_id } = &principal {
+            let role = state
+                .admin_services()
+                .auth()
+                .admin_role(admin_user_id)
+                .await
+                .map_err(map_admin_service_error)?;
+            if role.is_read_only() && !matches!(parts.method, Method::GET | Method::HEAD) {
+                return Err(AdminError::forbidden());
+            }
+        }
         let request_id = admin_request_id(parts).ok_or_else(AdminError::internal)?;
         Ok(Self {
             context: AdminRequestContext {
@@ -99,4 +119,93 @@ where
 fn admin_api_key_header(headers: &HeaderMap) -> Option<String> {
     let value = headers.get("x-api-key")?.to_str().ok()?.trim();
     (!value.is_empty()).then(|| value.to_owned())
+}
+
+/// 管理员账户创建请求。
+#[derive(Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateAdminUserRequest {
+    pub username: String,
+    pub password: String,
+    pub role: String,
+}
+
+/// 管理员账户列表只返回公开的身份和权限信息。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminUserView {
+    pub username: String,
+    pub role: &'static str,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<AdminUser> for AdminUserView {
+    fn from(user: AdminUser) -> Self {
+        Self {
+            username: user.username,
+            role: user.role.as_str(),
+            created_at: user.created_at,
+        }
+    }
+}
+
+/// 构造管理员账户管理路由。
+pub(crate) fn router<S>() -> Router<S>
+where
+    S: SessionState + Clone + Send + Sync + 'static,
+{
+    Router::new().route(
+        "/api/admin/auth/users",
+        get(list_admin_users::<S>).post(create_admin_user::<S>),
+    )
+}
+
+async fn list_admin_users<S>(
+    _auth: AdminAuth,
+    State(state): State<S>,
+) -> Result<impl IntoResponse, AdminError>
+where
+    S: SessionState + Send + Sync,
+{
+    let users = state
+        .admin_services()
+        .auth()
+        .list_admin_users()
+        .await
+        .map_err(map_admin_service_error)?;
+    Ok(AdminResponse::new(
+        StatusCode::OK,
+        AdminEnvelope::ok(
+            users
+                .into_iter()
+                .map(AdminUserView::from)
+                .collect::<Vec<_>>(),
+        ),
+    ))
+}
+
+async fn create_admin_user<S>(
+    _auth: AdminAuth,
+    State(state): State<S>,
+    AdminJson(request): AdminJson<CreateAdminUserRequest>,
+) -> Result<impl IntoResponse, AdminError>
+where
+    S: SessionState + Send + Sync,
+{
+    let role = AdminRole::parse(request.role.trim())
+        .ok_or_else(|| AdminError::bad_request("管理员角色不合法"))?;
+    let user = state
+        .admin_services()
+        .auth()
+        .create_admin_user(CreateAdminUser {
+            username: request.username,
+            password: request.password,
+            role,
+        })
+        .await
+        .map_err(map_admin_service_error)?;
+    Ok(AdminResponse::new(
+        StatusCode::CREATED,
+        AdminEnvelope::ok(AdminUserView::from(user)),
+    ))
 }
