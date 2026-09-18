@@ -20,7 +20,7 @@ use gateway_admin::{
             ClientKeyListQuery as AdminClientKeyListQuery, ClientKeyPage as AdminClientKeyPage,
             ClientKeyRecord as AdminClientKeyRecord, ClientKeySecret as AdminClientKeySecret,
             ClientKeySort as AdminClientKeySort, ClientKeySortField as AdminClientKeySortField,
-            DeleteClientKey, NewClientKey, SetClientKeyEnabled,
+            DeleteClientKey, NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled,
             SortDirection as AdminSortDirection, UpdateClientKey as AdminUpdateClientKey,
         },
     },
