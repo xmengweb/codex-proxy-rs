@@ -269,13 +269,13 @@ watch(
     <BaseConfirmModal
       v-model="showResetBudgetModal"
       title="重置 API Key 额度"
-      description="会将当前日用量和周用量立即清零，不修改日限额和周限额。"
+      description="会将当前日用量和周用量立即清零，并以本次重置时间重新计算日、周重置时间；不修改日限额和周限额。"
       confirm-text="确认重置"
       :loading="resettingBudget"
       @confirm="handleResetBudget"
     >
       <p class="m-0">
-        确定重置 {{ pendingResetBudgetKey?.name || pendingResetBudgetKey?.prefix || '该 API Key' }} 的日、周已用额度吗？
+        确定重置 {{ pendingResetBudgetKey?.name || pendingResetBudgetKey?.prefix || '该 API Key' }} 的日、周已用额度，并从现在开始新的日、周周期吗？
       </p>
     </BaseConfirmModal>
 
