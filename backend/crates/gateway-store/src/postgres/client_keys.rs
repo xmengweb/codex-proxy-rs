@@ -873,7 +873,14 @@ impl ClientKeyStore for PgAdminClientKeyStore {
                     "reset_budget",
                     "client_api_key",
                     command.id.as_str(),
-                    vec!["daily_used_usd".to_owned(), "weekly_used_usd".to_owned()],
+                    vec![
+                        "daily_start".to_owned(),
+                        "daily_end".to_owned(),
+                        "weekly_start".to_owned(),
+                        "weekly_end".to_owned(),
+                        "daily_used_usd".to_owned(),
+                        "weekly_used_usd".to_owned(),
+                    ],
                 ),
             )
             .await
