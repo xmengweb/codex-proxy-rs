@@ -9,7 +9,8 @@ import { resetUnauthorizedHandling } from '@/api/request'
 export const useAuthStore = defineStore('auth', () => {
   const session = shallowRef<AuthSession | null>(null)
   const isAuthenticated = computed(() => session.value !== null)
-  const isAdmin = computed(() => session.value?.role === 'admin')
+  const isAdmin = computed(() => session.value?.role === 'admin' || session.value?.role === 'readonly')
+  const isReadOnlyAdmin = computed(() => session.value?.role === 'readonly')
   const sessionChecked = shallowRef(false)
   const loading = shallowRef(false)
   let revision = 0
@@ -87,5 +88,16 @@ export const useAuthStore = defineStore('auth', () => {
     resetUnauthorizedHandling()
   }
 
-  return { session, isAuthenticated, isAdmin, sessionChecked, loading, checkAuth, login, logout, invalidateSession }
+  return {
+    session,
+    isAuthenticated,
+    isAdmin,
+    isReadOnlyAdmin,
+    sessionChecked,
+    loading,
+    checkAuth,
+    login,
+    logout,
+    invalidateSession,
+  }
 })
