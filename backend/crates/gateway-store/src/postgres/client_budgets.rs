@@ -206,15 +206,38 @@ pub(crate) async fn reset_client_key_budget_in_transaction(
             id: key.to_owned(),
         });
     }
+    // 手动重置以当前事务时间作为新的窗口起点，避免清零后沿用旧的重置时间。
     sqlx::query(
-        "update client_key_budget_windows
-         set daily_used_usd = 0, weekly_used_usd = 0
-         where client_api_key_id = $1",
+        "insert into client_key_budget_windows (
+            client_api_key_id,
+            daily_start,
+            daily_end,
+            weekly_start,
+            weekly_end,
+            daily_used_usd,
+            weekly_used_usd
+        )
+        values (
+            $1,
+            now(),
+            now() + interval '24 hours',
+            now(),
+            now() + interval '168 hours',
+            0,
+            0
+        )
+        on conflict (client_api_key_id) do update set
+            daily_start = excluded.daily_start,
+            daily_end = excluded.daily_end,
+            weekly_start = excluded.weekly_start,
+            weekly_end = excluded.weekly_end,
+            daily_used_usd = 0,
+            weekly_used_usd = 0",
     )
     .bind(key)
     .execute(&mut **tx)
     .await
-    .map_err(|_| postgres_unavailable("reset client API key budget"))?;
+    .map_err(|_| postgres_unavailable("reset client API key budget window"))?;
     Ok(())
 }
 
