@@ -47,15 +47,18 @@ const {
   showFormModal,
   showDeleteModal,
   showSingleDeleteModal,
+  showResetBudgetModal,
   showKeyModal,
   showAllAccountsConfirm,
   createdKey,
   createdKeyName,
   editingKey,
   pendingDeleteKey,
+  pendingResetBudgetKey,
   savingKey,
   deletingKey,
   batchDeleting,
+  resettingBudget,
   updatingStatusKeyIds,
   revealingKeyIds,
   form,
@@ -66,6 +69,8 @@ const {
   requestDeleteKey,
   handleDelete,
   handleBatchDelete,
+  requestResetBudget,
+  handleResetBudget,
   handleToggleStatus,
   copyToClipboard,
   revealPlaintextKey,
@@ -186,10 +191,12 @@ watch(
               <ApiKeyActions
                 :api-key="row"
                 :deleting="deletingKey"
+                :resetting-budget="resettingBudget"
                 :revealing="revealingKeyIds.has(row.id)"
                 :updating-status="updatingStatusKeyIds.has(row.id)"
                 @edit="openEdit"
                 @delete="requestDeleteKey"
+                @reset-budget="requestResetBudget"
                 @import-ccs="importToCcs"
                 @toggle="handleToggleStatus"
                 @use="openUseKeyModal"
@@ -251,6 +258,19 @@ watch(
     >
       <p class="m-0">
         确定删除选中的 {{ selectedIds.size }} 个 API Key 吗？
+      </p>
+    </BaseConfirmModal>
+
+    <BaseConfirmModal
+      v-model="showResetBudgetModal"
+      title="重置 API Key 额度"
+      description="会将当前日用量和周用量立即清零，不修改日限额和周限额。"
+      confirm-text="确认重置"
+      :loading="resettingBudget"
+      @confirm="handleResetBudget"
+    >
+      <p class="m-0">
+        确定重置 {{ pendingResetBudgetKey?.name || pendingResetBudgetKey?.prefix || '该 API Key' }} 的日、周已用额度吗？
       </p>
     </BaseConfirmModal>
 
