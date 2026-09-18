@@ -15,7 +15,7 @@ use gateway_core::{
 };
 use sqlx::{PgPool, Postgres, Row, Transaction};
 
-use crate::{StoreResult, postgres_unavailable};
+use crate::{StoreError, StoreResult, postgres_unavailable};
 
 pub struct PgClientBudgetStore {
     pool: PgPool,
@@ -187,6 +187,35 @@ impl ClientBudgetPort for PgClientBudgetStore {
             result
         })
     }
+}
+
+pub(crate) async fn reset_client_key_budget_in_transaction(
+    tx: &mut Transaction<'_, Postgres>,
+    key: &str,
+) -> StoreResult<()> {
+    let exists = sqlx::query_scalar::<_, String>(
+        "select id from client_api_keys where id = $1 for update",
+    )
+    .bind(key)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(|_| postgres_unavailable("lock client API key for budget reset"))?;
+    if exists.is_none() {
+        return Err(StoreError::NotFound {
+            entity: "client API key",
+            id: key.to_owned(),
+        });
+    }
+    sqlx::query(
+        "update client_key_budget_windows
+         set daily_used_usd = 0, weekly_used_usd = 0
+         where client_api_key_id = $1",
+    )
+    .bind(key)
+    .execute(&mut **tx)
+    .await
+    .map_err(|_| postgres_unavailable("reset client API key budget"))?;
+    Ok(())
 }
 
 async fn advance_windows(
