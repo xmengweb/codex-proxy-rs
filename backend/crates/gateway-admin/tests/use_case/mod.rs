@@ -611,7 +611,7 @@ impl ClientKeyStore for UnavailableStore {
 
     async fn reset_client_key_budget(
         &self,
-        _: DeleteClientKey,
+        _: ResetClientKeyBudget,
         _: &MutationContext,
     ) -> AdminStoreResult<Revision> {
         Err(unavailable("client key budget reset"))
