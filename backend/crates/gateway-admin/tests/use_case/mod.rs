@@ -38,7 +38,7 @@ use gateway_admin::{
         client_distribution::CodexDesktopWindowsDownloads,
         client_keys::{
             ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
-            NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+            NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
         },
         observability::{
             DashboardDesktopRelease, DashboardObservation, DashboardWireAttribute,
@@ -607,6 +607,14 @@ impl ClientKeyStore for UnavailableStore {
         _: &MutationContext,
     ) -> AdminStoreResult<(Revision, ClientKeyRecord)> {
         Err(unavailable("client key enabled"))
+    }
+
+    async fn reset_client_key_budget(
+        &self,
+        _: DeleteClientKey,
+        _: &MutationContext,
+    ) -> AdminStoreResult<Revision> {
+        Err(unavailable("client key budget reset"))
     }
 
     async fn delete_client_key(
