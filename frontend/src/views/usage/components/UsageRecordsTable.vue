@@ -40,6 +40,15 @@ withDefaults(
     :loading="loading"
     :empty-text="emptyText"
   >
+    <template #clientApiKeyName="{ row }">
+      <code
+        class="block max-w-full truncate font-mono text-cp-sm font-emphasis text-cp-text"
+        :title="row.clientApiKeyName || undefined"
+      >
+        {{ row.clientApiKeyName || '—' }}
+      </code>
+    </template>
+
     <template #provider="{ row }">
       <ProviderIconGroup
         :provider="String(row.provider || '')"
