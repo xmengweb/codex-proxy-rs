@@ -6,6 +6,7 @@ import {
   deleteApiKey,
   disableApiKey,
   enableApiKey,
+  resetApiKeyBudget,
   revealApiKey,
   updateApiKey,
 } from '@/api'
@@ -35,20 +36,24 @@ export function useApiKeyMutations(options: {
   const showFormModal = shallowRef(false)
   const showDeleteModal = shallowRef(false)
   const showSingleDeleteModal = shallowRef(false)
+  const showResetBudgetModal = shallowRef(false)
   const showKeyModal = shallowRef(false)
   const showAllAccountsConfirm = shallowRef(false)
   const createdKey = shallowRef('')
   const createdKeyName = shallowRef('')
   const editingKey = shallowRef<ApiKeyRow | null>(null)
   const pendingDeleteKey = shallowRef<ApiKeyRow | null>(null)
+  const pendingResetBudgetKey = shallowRef<ApiKeyRow | null>(null)
   const savingKeyAction = useAsyncAction()
   const deletingKeyAction = useAsyncAction()
   const batchDeletingAction = useAsyncAction()
+  const resettingBudgetAction = useAsyncAction()
   const updatingStatusKeys = useIdSet<string>()
   const revealingKeys = useIdSet<string>()
   const savingKey = savingKeyAction.loading
   const deletingKey = deletingKeyAction.loading
   const batchDeleting = batchDeletingAction.loading
+  const resettingBudget = resettingBudgetAction.loading
   const updatingStatusKeyIds = updatingStatusKeys.ids
   const revealingKeyIds = revealingKeys.ids
   const form = ref<ApiKeyFormValue>(emptyForm())
@@ -223,6 +228,30 @@ export function useApiKeyMutations(options: {
     })
   }
 
+  function requestResetBudget(key: ApiKeyRow) {
+    pendingResetBudgetKey.value = key
+    showResetBudgetModal.value = true
+  }
+
+  async function handleResetBudget() {
+    if (resettingBudget.value)
+      return
+    const keyId = pendingResetBudgetKey.value?.id
+    if (!keyId)
+      return
+
+    await resettingBudgetAction.run(
+      async () => {
+        await resetApiKeyBudget({ id: keyId })
+        showResetBudgetModal.value = false
+        pendingResetBudgetKey.value = null
+        await options.reload()
+        toast.success('额度已重置')
+      },
+      { onError: () => void options.reload() },
+    )
+  }
+
   async function copyToClipboard(text: string) {
     await copyText(text, { successText: '已复制到剪贴板', emptyErrorText: '复制失败' })
   }
@@ -266,15 +295,18 @@ export function useApiKeyMutations(options: {
     showFormModal,
     showDeleteModal,
     showSingleDeleteModal,
+    showResetBudgetModal,
     showKeyModal,
     showAllAccountsConfirm,
     createdKey,
     createdKeyName,
     editingKey,
     pendingDeleteKey,
+    pendingResetBudgetKey,
     savingKey,
     deletingKey,
     batchDeleting,
+    resettingBudget,
     updatingStatusKeyIds,
     revealingKeyIds,
     form,
@@ -285,6 +317,8 @@ export function useApiKeyMutations(options: {
     requestDeleteKey,
     handleDelete,
     handleBatchDelete,
+    requestResetBudget,
+    handleResetBudget,
     handleToggleStatus,
     copyToClipboard,
     revealPlaintextKey,
