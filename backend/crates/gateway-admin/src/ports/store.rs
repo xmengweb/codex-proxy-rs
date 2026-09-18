@@ -23,7 +23,7 @@ use crate::model::{
     auth::{AdminAuditEvent, AdminRole, AdminUser, AuthSession},
     client_keys::{
         ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
-        NewClientKey, SetClientKeyEnabled, UpdateClientKey,
+        NewClientKey, ResetClientKeyBudget, SetClientKeyEnabled, UpdateClientKey,
     },
     observability::{
         DashboardObservation, DashboardRuntimeSlots, DiagnosticDimension, DiagnosticObservation,
@@ -315,6 +315,12 @@ pub trait ClientKeyStore: Send + Sync {
         command: SetClientKeyEnabled,
         context: &MutationContext,
     ) -> AdminStoreResult<(Revision, ClientKeyRecord)>;
+
+    async fn reset_client_key_budget(
+        &self,
+        command: ResetClientKeyBudget,
+        context: &MutationContext,
+    ) -> AdminStoreResult<Revision>;
 
     async fn delete_client_key(
         &self,
