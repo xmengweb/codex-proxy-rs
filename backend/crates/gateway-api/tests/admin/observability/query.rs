@@ -13,6 +13,21 @@ fn dashboard_query_should_parse_terminal_trend_kinds() {
 }
 
 #[test]
+fn dashboard_query_should_map_usage_filters() {
+    let query: DashboardQuery = serde_json::from_value(json!({
+        "kind": "usage",
+        "provider": "openai",
+        "model": "gpt-5",
+        "search": "team-a"
+    }))
+    .unwrap();
+    let filter = query.usage_filter();
+    assert_eq!(filter.provider_kind.as_deref(), Some("openai"));
+    assert_eq!(filter.model.as_deref(), Some("gpt-5"));
+    assert_eq!(filter.search.as_deref(), Some("team-a"));
+}
+
+#[test]
 fn dashboard_query_should_reject_unknown_trend_kind() {
     let query: DashboardQuery = serde_json::from_value(json!({"kind": "secret"})).unwrap();
     assert_eq!(query.trend_kind().unwrap_err().field(), "kind");

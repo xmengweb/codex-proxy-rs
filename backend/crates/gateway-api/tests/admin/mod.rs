@@ -1008,6 +1008,7 @@ impl ObservabilityStore for UnusedStore {
         &self,
         range: TimeRange,
         _: DateTime<Utc>,
+        _: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation> {
         *self
             .dashboard_summary_range
@@ -1020,7 +1021,11 @@ impl ObservabilityStore for UnusedStore {
             .ok_or_else(|| unavailable("dashboard"))
     }
 
-    async fn dashboard_trend(&self, _: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>> {
+    async fn dashboard_trend(
+        &self,
+        _: TimeRange,
+        _: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>> {
         Err(unavailable("dashboard trend"))
     }
 

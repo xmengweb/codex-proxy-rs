@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { Activity, FileText, Timer, Users } from '@lucide/vue'
-import { useIntervalFn } from '@vueuse/core'
-import { computed, onMounted, onScopeDispose, shallowRef } from 'vue'
+import { useIntervalFn, watchDebounced } from '@vueuse/core'
+import { computed, onMounted, onScopeDispose, shallowRef, watch } from 'vue'
 
 import { getDashboardSummary, getDashboardTrend } from '@/api'
 import { errorMessage, withMinimumDuration } from '@/utils/async'
@@ -17,6 +17,9 @@ export function useDashboard() {
   const loading = shallowRef(false)
   const refreshing = shallowRef(false)
   const lastRefreshedAt = shallowRef('')
+  const searchQuery = shallowRef('')
+  const providerQuery = shallowRef('')
+  let dashboardRequestId = 0
   let trendRequestId = 0
   let disposed = false
   let summaryController: AbortController | undefined
@@ -44,27 +47,30 @@ export function useDashboard() {
     { immediate: false },
   )
 
-  async function loadDashboardData(silent = false) {
-    if (loading.value || refreshing.value)
+  async function loadDashboardData(silent = false, force = false) {
+    if (refreshing.value || (!force && loading.value))
       return
+    const requestId = ++dashboardRequestId
     try {
       loading.value = true
-      await loadDashboardSnapshot(silent)
+      await loadDashboardSnapshot(requestId, silent)
     }
     catch {
       // 自动刷新会继续重试，保留最后一次成功快照。
     }
     finally {
-      loading.value = false
+      if (isCurrentDashboardRequest(requestId))
+        loading.value = false
     }
   }
 
   async function refreshDashboardData() {
     if (loading.value || refreshing.value)
       return
+    const requestId = ++dashboardRequestId
     refreshing.value = true
     try {
-      await withMinimumDuration(loadDashboardSnapshot)
+      await withMinimumDuration(() => loadDashboardSnapshot(requestId))
     }
     catch {
       // 手动刷新失败时保留当前数据，不打断概览操作。
@@ -83,7 +89,7 @@ export function useDashboard() {
     trendLoading.value = true
     trendError.value = ''
     try {
-      const result = await getDashboardTrend({ kind: trendKind }, { signal: trendController.signal })
+      const result = await getDashboardTrend(dashboardQuery(trendKind), { signal: trendController.signal })
       if (isCurrentTrendRequest(requestId, trendKind))
         trend.value = result
     }
@@ -97,33 +103,46 @@ export function useDashboard() {
     }
   }
 
-  async function loadDashboardSnapshot(silent = false) {
+  async function loadDashboardSnapshot(requestId: number, silent = false) {
     const trendKind = activeTrendKind.value
-    const requestId = ++trendRequestId
+    const trendRequestIdForSnapshot = ++trendRequestId
     summaryController?.abort()
     trendController?.abort()
     summaryController = new AbortController()
     trendLoading.value = true
     trendError.value = ''
     try {
-      const summary = await getDashboardSummary({ kind: trendKind }, { silent, signal: summaryController.signal })
-      if (disposed)
+      const summary = await getDashboardSummary(dashboardQuery(trendKind), { silent, signal: summaryController.signal })
+      if (!isCurrentDashboardRequest(requestId))
         return
       snapshot.value = dashboardSnapshotView(summary)
       lastRefreshedAt.value = formatDateTime()
-      if (isCurrentTrendRequest(requestId, trendKind)) {
+      if (isCurrentTrendRequest(trendRequestIdForSnapshot, trendKind)) {
         trend.value = summary.trend
       }
     }
     catch (error: unknown) {
-      if (isCurrentTrendRequest(requestId, trendKind))
+      if (isCurrentTrendRequest(trendRequestIdForSnapshot, trendKind))
         trendError.value = errorMessage(error)
       throw error
     }
     finally {
-      if (isCurrentTrendRequest(requestId, trendKind))
+      if (isCurrentTrendRequest(trendRequestIdForSnapshot, trendKind))
         trendLoading.value = false
     }
+  }
+
+  function dashboardQuery(kind: string) {
+    const search = searchQuery.value.trim()
+    return {
+      kind,
+      ...(providerQuery.value ? { provider: providerQuery.value } : {}),
+      ...(search ? { search } : {}),
+    }
+  }
+
+  function isCurrentDashboardRequest(requestId: number) {
+    return !disposed && requestId === dashboardRequestId
   }
 
   function isCurrentTrendRequest(
@@ -138,8 +157,16 @@ export function useDashboard() {
     startAutoRefresh()
   })
 
+  watch(providerQuery, () => {
+    void loadDashboardData(true, true)
+  })
+  watchDebounced(searchQuery, () => {
+    void loadDashboardData(true, true)
+  }, { debounce: 250 })
+
   onScopeDispose(() => {
     disposed = true
+    dashboardRequestId += 1
     trendRequestId += 1
     summaryController?.abort()
     trendController?.abort()
@@ -148,6 +175,8 @@ export function useDashboard() {
   return {
     loading,
     refreshing,
+    searchQuery,
+    providerQuery,
     activeTrendKind,
     lastRefreshedAt,
     metrics,

@@ -632,11 +632,16 @@ impl ObservabilityStore for UnavailableStore {
         &self,
         _: TimeRange,
         _: DateTime<Utc>,
+        _: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation> {
         Err(unavailable("dashboard"))
     }
 
-    async fn dashboard_trend(&self, _: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>> {
+    async fn dashboard_trend(
+        &self,
+        _: TimeRange,
+        _: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>> {
         Err(unavailable("dashboard trend"))
     }
 

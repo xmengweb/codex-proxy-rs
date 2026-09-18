@@ -79,7 +79,11 @@ async fn health_timeline_should_keep_exactly_china_day_quarter_hour_slots() {
 
     let timeline = services
         .observability()
-        .dashboard_summary(observation_range(now), TrendKind::Usage)
+        .dashboard_summary(
+            observation_range(now),
+            UsageFilter::default(),
+            TrendKind::Usage,
+        )
         .await
         .expect("dashboard summary")
         .health_timeline;
@@ -135,7 +139,11 @@ async fn dashboard_summary_should_derive_first_token_average_from_trend() {
 
     let summary = services
         .observability()
-        .dashboard_summary(observation_range(now), TrendKind::Usage)
+        .dashboard_summary(
+            observation_range(now),
+            UsageFilter::default(),
+            TrendKind::Usage,
+        )
         .await
         .expect("dashboard summary");
 
@@ -205,7 +213,11 @@ async fn health_timeline_should_match_legacy_status_precedence_and_thresholds() 
             now + Duration::seconds(i64::try_from(index).expect("fixture index fits i64") * 2);
         let timeline = services
             .observability()
-            .dashboard_summary(observation_range(range_end), TrendKind::Usage)
+            .dashboard_summary(
+                observation_range(range_end),
+                UsageFilter::default(),
+                TrendKind::Usage,
+            )
             .await
             .expect("dashboard summary")
             .health_timeline;
@@ -232,7 +244,11 @@ async fn dashboard_summary_should_project_rebuildable_runtime_slots() {
 
     let capacity = services
         .observability()
-        .dashboard_summary(observation_range(now), TrendKind::Usage)
+        .dashboard_summary(
+            observation_range(now),
+            UsageFilter::default(),
+            TrendKind::Usage,
+        )
         .await
         .expect("dashboard summary")
         .capacity;
@@ -252,7 +268,11 @@ async fn dashboard_summary_should_share_one_current_observation_time_across_runt
 
     services
         .observability()
-        .dashboard_summary(observation_range(historical_end), TrendKind::Usage)
+        .dashboard_summary(
+            observation_range(historical_end),
+            UsageFilter::default(),
+            TrendKind::Usage,
+        )
         .await
         .expect("dashboard summary");
 
@@ -275,8 +295,8 @@ async fn dashboard_summary_should_coalesce_concurrent_requests_in_one_short_wind
     let observability = services.observability();
 
     let (first, second) = tokio::join!(
-        observability.dashboard_summary(first_range, TrendKind::Usage),
-        observability.dashboard_summary(second_range, TrendKind::Errors),
+        observability.dashboard_summary(first_range, UsageFilter::default(), TrendKind::Usage),
+        observability.dashboard_summary(second_range, UsageFilter::default(), TrendKind::Errors),
     );
 
     first.expect("first dashboard summary");
@@ -297,13 +317,37 @@ async fn dashboard_summary_should_reload_after_the_short_window_changes() {
     let observability = services.observability();
 
     observability
-        .dashboard_summary(first_range, TrendKind::Usage)
+        .dashboard_summary(first_range, UsageFilter::default(), TrendKind::Usage)
         .await
         .expect("first dashboard summary");
     observability
-        .dashboard_summary(second_range, TrendKind::Usage)
+        .dashboard_summary(second_range, UsageFilter::default(), TrendKind::Usage)
         .await
         .expect("second dashboard summary");
+
+    assert_eq!(store.dashboard_summary_calls(), 2);
+}
+
+#[tokio::test]
+async fn dashboard_summary_cache_should_separate_usage_filters() {
+    let end = Utc::now();
+    let range = observation_range(end);
+    let store = Arc::new(FixtureObservabilityStore::new(range));
+    let services = observability_services(store.clone()).await;
+    let observability = services.observability();
+    let filtered = UsageFilter {
+        search: Some("team-a".to_owned()),
+        ..UsageFilter::default()
+    };
+
+    observability
+        .dashboard_summary(range, UsageFilter::default(), TrendKind::Usage)
+        .await
+        .expect("unfiltered dashboard summary");
+    observability
+        .dashboard_summary(range, filtered, TrendKind::Usage)
+        .await
+        .expect("filtered dashboard summary");
 
     assert_eq!(store.dashboard_summary_calls(), 2);
 }
@@ -655,6 +699,7 @@ impl ObservabilityStore for FixtureObservabilityStore {
         &self,
         range: TimeRange,
         observed_at: DateTime<Utc>,
+        _: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation> {
         self.dashboard_summary_calls.fetch_add(1, Ordering::Relaxed);
         *self
@@ -683,7 +728,11 @@ impl ObservabilityStore for FixtureObservabilityStore {
         Ok(*self.runtime_slots.lock().expect("runtime slots"))
     }
 
-    async fn dashboard_trend(&self, _: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>> {
+    async fn dashboard_trend(
+        &self,
+        _: TimeRange,
+        _: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>> {
         Ok(self.trend.lock().expect("trend").clone())
     }
 

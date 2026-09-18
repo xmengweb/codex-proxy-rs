@@ -379,6 +379,7 @@ pub trait ObservabilityStore: Send + Sync {
         &self,
         range: TimeRange,
         observed_at: DateTime<Utc>,
+        filter: UsageFilter,
     ) -> AdminStoreResult<DashboardObservation>;
 
     /// 返回 Dashboard 可选的实时槽位事实。
@@ -392,7 +393,11 @@ pub trait ObservabilityStore: Send + Sync {
         Ok(None)
     }
 
-    async fn dashboard_trend(&self, range: TimeRange) -> AdminStoreResult<Vec<RequestMetricPoint>>;
+    async fn dashboard_trend(
+        &self,
+        range: TimeRange,
+        filter: UsageFilter,
+    ) -> AdminStoreResult<Vec<RequestMetricPoint>>;
 
     async fn usage_trend(
         &self,

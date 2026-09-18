@@ -91,7 +91,10 @@ async fn quota_forecast_excludes_openai_prewarm_but_preserves_inference_and_audi
     let detail = repository.usage_record_detail("prewarm").await.unwrap();
     assert_eq!(detail.request.request_kind.as_deref(), Some("prewarm"));
     assert_eq!(detail.request.service_tier.as_deref(), Some("auto"));
-    let dashboard = repository.dashboard_summary(range, end).await.unwrap();
+    let dashboard = repository
+        .dashboard_summary(range, end, UsageRecordFilter::default())
+        .await
+        .unwrap();
     assert_eq!(dashboard.totals.request_count, 3);
     assert_eq!(dashboard.totals.total_tokens, 300);
 

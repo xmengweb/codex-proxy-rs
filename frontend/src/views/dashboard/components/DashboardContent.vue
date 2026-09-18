@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { dashboardSnapshotView, dashboardTrendView } from '../composables/useDashboard'
 import type { DashboardTrendKind } from '@/api/modules/dashboard'
-import { RefreshCw } from '@lucide/vue'
+import { RefreshCw, Search } from '@lucide/vue'
 
 import BaseIconButton from '@/components/base/BaseIconButton.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
 import BasePageHeader from '@/components/base/BasePageHeader.vue'
+import ProviderFilterSegmented from '@/components/ProviderFilterSegmented.vue'
 
 import AccountOverviewCard from './AccountOverviewCard.vue'
 import DashboardHeartbeat from './DashboardHeartbeat.vue'
@@ -50,6 +52,8 @@ const emit = defineEmits<{
 }>()
 
 const trendKind = defineModel<DashboardTrendKind>('trendKind', { required: true })
+const searchQuery = defineModel<string>('searchQuery', { required: true })
+const providerQuery = defineModel<string>('providerQuery', { required: true })
 </script>
 
 <template>
@@ -60,19 +64,32 @@ const trendKind = defineModel<DashboardTrendKind>('trendKind', { required: true 
         <DashboardHeartbeat :updated-at="lastRefreshedAt" />
       </template>
       <template #actions>
-        <BaseIconButton
-          class="text-cp-primary-text"
-          size="md"
-          label="刷新概览"
-          :loading="loading || refreshing"
-          :disabled="loading || refreshing"
-          @click="emit('refresh')"
-        >
-          <template #loading>
-            <RefreshCw class="animate-spin motion-reduce:animate-none" :size="19" />
-          </template>
-          <RefreshCw :size="19" />
-        </BaseIconButton>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <BaseInput
+            v-model="searchQuery"
+            placeholder="密钥名称、模型、账号或请求"
+            aria-label="筛选概览：密钥名称、模型、账号或请求"
+            class="w-56 sm:w-64"
+          >
+            <template #prefix>
+              <Search class="size-4.5 text-cp-text-tertiary" />
+            </template>
+          </BaseInput>
+          <ProviderFilterSegmented v-model="providerQuery" class="w-31 shrink-0" />
+          <BaseIconButton
+            class="text-cp-primary-text"
+            size="md"
+            label="刷新概览"
+            :loading="loading || refreshing"
+            :disabled="loading || refreshing"
+            @click="emit('refresh')"
+          >
+            <template #loading>
+              <RefreshCw class="animate-spin motion-reduce:animate-none" :size="19" />
+            </template>
+            <RefreshCw :size="19" />
+          </BaseIconButton>
+        </div>
       </template>
     </BasePageHeader>
 

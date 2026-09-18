@@ -184,6 +184,9 @@ export interface DashboardSummaryResponse {
 
 interface DashboardQuery {
   kind: string
+  provider?: string
+  model?: string
+  search?: string
 }
 
 export function getDashboardSummary(data: DashboardQuery, options: RequestOptions = {}) {
