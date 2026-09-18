@@ -20,7 +20,7 @@ use crate::model::{
         AccountUpdateResult, AccountUsage, AccountUsageWindowQuery, AccountUsageWindowResult,
         AccountsUpdateResult, BatchUpdateAccounts, DeleteAccounts, UpdateAccount,
     },
-    auth::{AdminAuditEvent, AuthSession},
+    auth::{AdminAuditEvent, AdminRole, AdminUser, AuthSession},
     client_keys::{
         ClientKeyListQuery, ClientKeyPage, ClientKeyRecord, ClientKeySecret, DeleteClientKey,
         NewClientKey, SetClientKeyEnabled, UpdateClientKey,
@@ -226,6 +226,30 @@ pub trait AccountRuntimeStore: Send + Sync {
 #[async_trait]
 pub trait AuthStore: Send + Sync {
     async fn load_password_hash(&self, admin_user_id: &str) -> AdminStoreResult<Option<String>>;
+
+    /// 读取管理员账户角色；旧的测试或兼容存储默认按完整管理员处理。
+    async fn load_admin_user(&self, _admin_user_id: &str) -> AdminStoreResult<Option<AdminUser>> {
+        Ok(None)
+    }
+
+    /// 列出管理员账户；不支持账户目录的兼容存储返回空列表。
+    async fn list_admin_users(&self) -> AdminStoreResult<Vec<AdminUser>> {
+        Ok(Vec::new())
+    }
+
+    /// 创建管理员账户；未实现账户目录的存储显式返回不可用。
+    async fn create_admin_user(
+        &self,
+        _admin_user_id: &str,
+        _password_hash: &str,
+        _role: AdminRole,
+    ) -> AdminStoreResult<bool> {
+        Err(AdminStoreError::new(
+            AdminStoreErrorKind::Unavailable,
+            "admin_users",
+            "admin user creation is unavailable",
+        ))
+    }
 
     async fn create_password_hash_if_absent(
         &self,
